@@ -1,0 +1,62 @@
+Vendor,Model
+Dell Inc.,Precision T3610
+Alienware,Alienware 15 R3
+Dell Inc.,OptiPlex 9010
+Dell Inc.,OptiPlex 9010 AIO
+Dell Inc.,OptiPlex 9020
+Dell Inc.,OptiPlex 9020 AIO
+Dell Inc.,OptiPlex 9020M
+Dell Inc.,OptiPlex 9030 AIO
+Dell Inc.,Precision 5510
+Dell Inc.,Precision 7510
+Dell Inc.,Precision M4800
+Dell Inc.,Precision T1700
+Dell Inc.,Precision T5610
+Dell Inc.,Precision Tower 3420
+Dell Inc.,Precision Tower 3620
+Dell Inc.,Precision Tower 5810
+Dell Inc.,Precision Tower 7810
+Dell Inc.,XPS 13 9360
+Dell Inc.,XPS 13 9365
+Dell Inc.,OptiPlex 780
+Dell Inc.,OptiPlex 7450 AIO
+Dell Inc.,Precision 5520
+Dell Inc.,OptiPlex 7050
+Dell Inc.,Latitude 3160
+Dell Inc.,Latitude 3380
+Dell Inc.,Latitude 5580
+Dell Inc.,Latitude 7280
+Dell Inc.,Latitude 7480
+Dell Inc.,Latitude E5470
+Dell Inc.,Latitude E5550
+Dell Inc.,Latitude E5570
+Dell Inc.,Latitude E6230
+Dell Inc.,OptiPlex 7440 AIO
+Dell Inc.,Latitude E6430
+Dell Inc.,Latitude E6540
+Dell Inc.,Latitude E7240
+Dell Inc.,Latitude E7250
+Dell Inc.,Latitude E7270
+Dell Inc.,Latitude E7440
+Dell Inc.,Latitude E7450
+Dell Inc.,Latitude E7470
+Dell Inc.,OptiPlex 7040
+Dell Inc.,Latitude E6510
+Hewlett-Packard,HP ElitePad 1000 G2
+Hewlett-Packard,HP EliteOne 800 G1 Touch AiO
+Hewlett-Packard,HP EliteDesk 800 G1 USDT
+Hewlett-Packard,HP EliteOne 800 G1 Aio
+HP,HP EliteDesk 800 G2 DM 35W
+HP,HP EliteOne 800 G2 23-in Touch AiO
+HP,HP Z VR Backpack G1 Workstation
+LENOVO,20ARA09TAU
+LENOVO,20BF006RAU
+LENOVO,20BFA0KGAU
+LENOVO,3448AWM
+Microsoft Corporation,Surface Book
+Microsoft Corporation,Surface 3
+Microsoft Corporation,Surface Book 2
+Microsoft Corporation,Surface Pro
+Microsoft Corporation,Surface Pro 3
+Microsoft Corporation,Surface Pro 4
+Microsoft Corporation,Virtual Machine
