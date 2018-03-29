@@ -53,7 +53,7 @@ function Save-DellDriverPack {
     #>
     [CmdLetBinding()]
     Param(
-        [Parameter(Mandatory=$True)][string]$Model,
+        [Parameter(ValueFromPipelineByPropertyName=$True,ValueFromPipeline=$True)]$Model,
         [string]$OutFile,
         [string]$OutPath,
         [ValidateSet(
@@ -68,7 +68,18 @@ function Save-DellDriverPack {
         $XML = Get-DellDriverCatalogue
     }
     Process{
-        $ModelInfo = Get-DellDriverCabPackInfo -Model $Model -XML $XML -OSVersion $OSVersion
+        if ($Model.Model) {
+            Write-Verbose "Detected Model Object"
+            $ModelInfo = $Model
+            $Model = $ModelInfo.Model
+        } else {
+            If (-Not $Model){
+                Write-Error "You must specify a model"
+            }
+        }
+        If (-Not $ModelInfo){
+            $ModelInfo = Get-DellDriverCabPackInfo -Model $Model -XML $XML -OSVersion $OSVersion
+        }
         If (-Not $OutFile) {
             If (-Not ($OutPath)){
                 $OutPath = (Get-Location).Path
@@ -78,7 +89,7 @@ function Save-DellDriverPack {
         If (-Not (Test-Path -Path (Split-Path -Path $OutFile -Parent) -ErrorAction SilentlyContinue)) {
             New-Item -Path (Split-Path -Path $OutFile -Parent) -ItemType Directory -Force
         }
-        Write-Verbose "Downloading Cab pack"
+        Write-Verbose "Downloading Cab pack $($ModelInfo.Model)"
         $Tries = 0
         If (Test-Path -Path $OutFile) {
             Write-Verbose "File already exists."
@@ -99,6 +110,10 @@ function Save-DellDriverPack {
             'Downloaded' = (Test-Path -Path $OutFile)
             'VerifySucceeded' = $FileHashMatch
         }    
+        # Cleanup for pipeline processing
+        Remove-Variable OutFile
+        Remove-Variable ModelInfo
+        Remove-Variable FileHashMatch
     }
     End{
 
@@ -175,7 +190,7 @@ function Get-DellUpdatedDriverPacks {
 #>
     [CmdLetBinding()]
     Param(
-        [Parameter(ValueFromPipeline=$True)]$Model,
+        [Parameter(ValueFromPipeline=$True,ValueFromPipelineByPropertyName=$True)]$Model,
         [Parameter(Mandatory=$True)]$CacheFile
     )
 
@@ -193,11 +208,20 @@ function Get-DellUpdatedDriverPacks {
     }
 
     Process {
-        If ($CacheData -and $NewData) {
-            Write-Verbose "Comparing new data with cache"
-            $NewData | Where-Object {
+        If ($Model){
+            If ($Model.Model) {
+                $Model = $Model.Model
+            }
+            Write-Debug "Only scanning for changes on $Model"
+            $NewModelData = $NewData | Where-Object {$PSItem.Model -eq $Model}
+        } else {
+            $NewModelData = $NewData
+        }
+        If ($CacheData -and $NewModelData) {
+            $NewModelData | Where-Object {
                 $NewModel = $_.Model
                 $CacheModel = $CacheData | Where-Object {$psItem.Model -eq $NewModel}
+                Write-Debug "Comparing new data for model $NewModel with cache $($CacheModel.Model)"
                 Compare-Object -Ref $psItem -Diff $CacheModel -Property Version
             }
         }
@@ -218,7 +242,8 @@ function Get-DellDriverCabPackInfo {
             "Windows8",
             "Windows8.1"
         )]$OSVersion='Windows10',
-        [Parameter(Mandatory=$True)]$XML)
+        [Parameter(Mandatory=$True)]$XML
+    )
     <#
         .SYNOPSIS
         Retrieve URL and other data about Driver packs for a model of Dell hardware
@@ -278,8 +303,8 @@ function Get-DellDriverCabPackInfo {
         $ValidPackages = $DriverPackages | Where-Object {
             $psItem.SupportedOperatingSystems.OperatingSystem.osCode -eq $OSVersion
         }
-        Write-Verbose "$($ValidPackages.Count) OS matching packages found"
         If ($Model) {
+            Write-Verbose "Getting driver pack info for $Model"
             $ValidPackages = $ValidPackages | Where-Object {
                 $psItem.SupportedSystems.Brand.Model.name -eq $Model
             }
@@ -288,10 +313,18 @@ function Get-DellDriverCabPackInfo {
             [PSCustomObject]@{
                 'Model' = $Model
                 'Version' = $psItem.dellVersion
-                'URL' = "https://download.dell.com/$($psItem.path)"
+                'URL' = "https://downloads.dell.com/$($psItem.path)"
                 'ReleaseDate' = (Get-Date $psItem.dateTime -Format "yyyy-MM-dd")
                 'MD5' = $psItem.hashMD5
             }
         }
     }
+}
+
+function Save-NewDriverPacks {
+    [CmdLetBinding()]
+    Param($ModelFile='.\models.txt',$CacheFile=".\DriverPackageCache.csv")
+    Get-Content -Path $ModelFile | Get-DellUpdatedDriverPacks -CacheFile $CacheFile | Save-DellDriverPack
+    # Update Cache
+    Get-DellDriverCabPackInfo -XML (Get-DellDriverCatalogue) | Export-CSV -Path $CacheFile -NoTypeInformation
 }
