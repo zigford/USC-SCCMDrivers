@@ -29,6 +29,39 @@ function Get-DellDriverCatalogue {
     Remove-Item -Path $CatalogExtractPath -Recurse -Force
 }
 
+function Save-DellDriverPack {
+    <#
+    .SYNOPSIS
+        Download and verify a driver package for a model of device
+    .DESCRIPTION
+        Take a dell model, obtain the CAB URL from Dells Catalog, download and save it and MD5 Checksum it.
+    .PARAMETER Model
+        A valid dell model
+    .PARAMETER OutFile
+        Path and full filename to save location
+    .EXAMPLE
+        PS> Save-DellDriverPack -Model "Precision 5520" -OutFile \\usc.internal\usc\appdev\General\Packaging\DriverPacks\Win10x64-Precision 5520.cab
+    .NOTES
+        Author: Jesse Harris
+    .LINK
+        online help
+    #>
+    [CmdLetBinding()]
+    Param(
+        [Parameter(Mandatory=$True)][string]$Model,
+        [string]$OutFile
+    )
+    Begin{
+
+    }
+    Process{
+
+    }
+    End{
+
+    }
+}
+
 function Get-DellUpdatedDriverPacks {
     <#
     .SYNOPSIS
@@ -45,28 +78,63 @@ function Get-DellUpdatedDriverPacks {
         online help
 #>
     [CmdLetBinding()]
-    Param([Parameter(Mandatory=$True)]$CacheFile)
+    Param(
+        [Parameter(ValueFromPipeline=$True)]$Model,
+        [Parameter(Mandatory=$True)]$CacheFile
+    )
 
+    Begin {
+        If (-Not (Test-Path -Path $CacheFile)) {
+            # Write a new cache file
+            $UpdatedModels = Get-DellDriverCabPackInfo -XML (Get-DellDriverCatalogue)
+            $UpdatedModels | Export-CSV -NoTypeInformation -Path $CacheFile
+            return $UpdatedModels
+        } else {
+            Write-Verbose "Importing cachedata from $CacheFile"
+            $CacheData = Import-CSV $CacheFile
+            $NewData = $CacheData.Model | Get-DellDriverCabPackInfo -XML (Get-DellDriverCatalogue)
+        }
+    }
+
+    Process {
+        If ($CacheData -and $NewData) {
+            Write-Verbose "Comparing new data with cache"
+            $NewData | Where-Object {
+                $NewModel = $_.Model
+                $CacheModel = $CacheData | Where-Object {$psItem.Model -eq $NewModel}
+                Compare-Object -Ref $psItem -Diff $CacheModel -Property Version
+            }
+        }
+
+    }
+    End{
+
+    }
 }
 
-function Get-DellDriverURL {
+function Get-DellDriverCabPackInfo {
     [CmdLetBinding()]
     Param(
         [Parameter(ValueFromPipeline=$True)]$Model,$OSVersion='Windows10',
         [Parameter(Mandatory=$True)]$XML)
     <#
         .SYNOPSIS
-        Retreieve a URL for downloading Dell CAB driver packs for a model.
+        Retrieve URL and other data about Driver packs for a model of Dell hardware
 
         .DESCRIPTION
-        Takes a Dell Model name an XML of Dell's Driver catalog and output's the latest URL's for that model
+        Takes a Dell Model name an XML of Dell's Driver catalog and output's an object containing the latest URL, MD5 sum of the CAB file, and Dell version of the driver pack.
 
         .PARAMETER Model
         A Dell model. Ie, "Precicison 5520"
 
         .EXAMPLE
         PS> Get-DellDriverPackUrl -Model "Precision 5520" -OSVersion "Windows10" -XML $XML
-        https://dell.download.com/blahbla.cab
+
+        Model       : Precision 5520
+        Version     : A05
+        URL         : https://download.dell.com/FOLDER04664035M/1/5520-win10-A05-NCVG1.CAB
+        ReleaseDate : 2018-01-10
+        MD5         : 0F84099B396A0381567296B72966DFC4
 
         .LINK
         https://github.com/zigford/USC-SCCMDrivers
@@ -105,14 +173,16 @@ function Get-DellDriverURL {
     }
     Process {
         $DriverPackages = $XML.DriverPackManifest.DriverPackage
-        $ValidOSPackages = $DriverPackages | Where-Object {
+        $ValidPackages = $DriverPackages | Where-Object {
             $psItem.SupportedOperatingSystems.OperatingSystem.osCode -eq $OSVersion
         }
-        Write-Verbose "$($ValidOSPackages.Count) OS matching packages found"
-        $MatchingModels = $ValidOSPackages | Where-Object {
-            $psItem.SupportedSystems.Brand.Model.name -eq $Model
+        Write-Verbose "$($ValidPackages.Count) OS matching packages found"
+        If ($Model) {
+            $ValidPackages = $ValidPackages | Where-Object {
+                $psItem.SupportedSystems.Brand.Model.name -eq $Model
+            }
         }
-        $MatchingModels | ForEach-Object {
+        $ValidPackages | ForEach-Object {
             [PSCustomObject]@{
                 'Model' = $Model
                 'Version' = $psItem.dellVersion
