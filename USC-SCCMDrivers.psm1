@@ -40,7 +40,12 @@ function Save-DellDriverPack {
     .PARAMETER OutFile
         Path and full filename to save location
     .EXAMPLE
-        PS> Save-DellDriverPack -Model "Precision 5520" -OutFile \\usc.internal\usc\appdev\General\Packaging\DriverPacks\Win10x64-Precision 5520.cab
+        PS> Save-DellDriverPack -Model "Precision 5520" 
+
+        Path                                                         Downloaded VerifySucceeded
+        ----                                                         ---------- ---------------
+        C:\Jesse\dev\zigford\USC-SCCMDrivers\Precision 5520-A03.cab        True            True
+
     .NOTES
         Author: Jesse Harris
     .LINK
@@ -49,16 +54,107 @@ function Save-DellDriverPack {
     [CmdLetBinding()]
     Param(
         [Parameter(Mandatory=$True)][string]$Model,
-        [string]$OutFile
+        [string]$OutFile,
+        [string]$OutPath,
+        [ValidateSet(
+            "Windows10",
+            "Windows7",
+            "Windows8",
+            "Windows8.1"
+        )]$OSVersion = "Windows10",
+        [int]$DownloadAttempts = 2
     )
     Begin{
-
+        $XML = Get-DellDriverCatalogue
     }
     Process{
-
+        $ModelInfo = Get-DellDriverCabPackInfo -Model $Model -XML $XML -OSVersion $OSVersion
+        If (-Not $OutFile) {
+            If (-Not ($OutPath)){
+                $OutPath = (Get-Location).Path
+            }
+            $OutFile = Join-Path -Path $OutPath -ChildPath "$Model-$($ModelInfo.Version).cab"
+        } 
+        If (-Not (Test-Path -Path (Split-Path -Path $OutFile -Parent) -ErrorAction SilentlyContinue)) {
+            New-Item -Path (Split-Path -Path $OutFile -Parent) -ItemType Directory -Force
+        }
+        Write-Verbose "Downloading Cab pack"
+        $Tries = 0
+        If (Test-Path -Path $OutFile) {
+            Write-Verbose "File already exists."
+            $FileHashMatch = Test-DellPackHash -FilePath $OutFile -Model $ModelInfo.Model -XML $XML -OSVersion $OSVersion
+        }
+        While ($Tries -lt $DownloadAttempts -and -Not (Test-Path -Path $OutFile) -and $FileHashMatch -ne $True ){
+            $Tries++
+            Try {
+                Write-Verbose "Downloading $($ModelInfo.URL)"
+                Invoke-WebRequest -UseBasic -Uri $ModelInfo.URL -OutFile $OutFile
+            } catch {
+                Write-Warning "Download attempt $Tries failed"
+            }
+            $FileHashMatch = Test-DellPackHash -FilePath $OutFile -Model $ModelInfo.Model -XML $XML -OSVersion $OSVersion
+        }
+        [PSCustomObject]@{
+            'Path' = $OutFile
+            'Downloaded' = (Test-Path -Path $OutFile)
+            'VerifySucceeded' = $FileHashMatch
+        }    
     }
     End{
 
+    }
+}
+
+function Test-DellPackHash {
+    <#
+    .SYNOPSIS
+        Verify a dell cab pack against it's MD5 hash.
+    .DESCRIPTION
+        Get the Dell Catalogue XML and get the cab packs hash. Use built-in Get-FileHash to confirm the hashes match
+    .PARAMETER FilePath
+        Path to the downloaded CAB pack to be verified
+    .PARAMETER Model
+        Model of cab pack and OS version to get hash for from Dell.
+    .PARAMETER OSVersion
+        OS Version to get hash from
+    .PARAMETER CacheFile
+        Path to Dell Catalogue cache file to avoid obtaining a new one.
+    .EXAMPLE
+        PS> Test-DellPackHash -Model 'Precision 5510' -OSVersion 'Windows10' -CacheFile .\DellCache.csv
+        $True
+    .NOTES
+        Author: Jesse Harris
+    .LINK
+        online help
+    #>
+    [CmdLetBinding()]
+    Param(
+        [Parameter(Mandatory=$True)][ValidateScript({Test-Path -Path $_})]$FilePath,
+        [Parameter(Mandatory=$True)]$Model,
+        [ValidateSet(
+            "Windows10",
+            "Windows7",
+            "Windows8.1",
+            "Windows8"
+        )][string]$OSVersion,
+        [ValidateScript({Test-Path -Path $_})][string]$CacheFile,
+        $XML
+    )
+    
+    If ($CacheFile){
+        $ModelInfo = Import-CSV -Path $CacheFile | Where-Object {$PSItem -eq $Model}
+    } else {
+        if (-Not $XML){
+            $XML = Get-DellDriverCatalogue
+        }
+        $ModelInfo = Get-DellDriverCabPackInfo -XML $XML -Model $Model 
+    }
+    Write-Verbose "Testing file hash of $FilePath"
+    $FileHash = Get-FileHash -Path $FilePath -Algorithm MD5
+    If ($FileHash.Hash -eq $ModelInfo.MD5) {
+        $True
+    } else {
+        $False
     }
 }
 
@@ -115,7 +211,13 @@ function Get-DellUpdatedDriverPacks {
 function Get-DellDriverCabPackInfo {
     [CmdLetBinding()]
     Param(
-        [Parameter(ValueFromPipeline=$True)]$Model,$OSVersion='Windows10',
+        [Parameter(ValueFromPipeline=$True)]$Model,
+        [ValidateSet(
+            "Windows10",
+            "Windows7",
+            "Windows8",
+            "Windows8.1"
+        )]$OSVersion='Windows10',
         [Parameter(Mandatory=$True)]$XML)
     <#
         .SYNOPSIS
