@@ -62,7 +62,8 @@ function Save-DellDriverPack {
             "Windows8",
             "Windows8.1"
         )]$OSVersion = "Windows10",
-        [int]$DownloadAttempts = 2
+        [int]$DownloadAttempts = 2,
+        [switch]$WhatIf
     )
     Begin{
         $XML = Get-DellDriverCatalogue
@@ -95,25 +96,30 @@ function Save-DellDriverPack {
             Write-Verbose "File already exists."
             $FileHashMatch = Test-DellPackHash -FilePath $OutFile -Model $ModelInfo.Model -XML $XML -OSVersion $OSVersion
         }
-        While ($Tries -lt $DownloadAttempts -and -Not (Test-Path -Path $OutFile) -and $FileHashMatch -ne $True ){
-            $Tries++
-            Try {
-                Write-Verbose "Downloading $($ModelInfo.URL)"
-                Invoke-WebRequest -UseBasic -Uri $ModelInfo.URL -OutFile $OutFile
-            } catch {
-                Write-Warning "Download attempt $Tries failed"
+        If (-Not $WhatIf) {
+            While ($Tries -lt $DownloadAttempts -and -Not (Test-Path -Path $OutFile) -and $FileHashMatch -ne $True ){
+                $Tries++
+                Try {
+                    Write-Verbose "Downloading $($ModelInfo.URL)"
+                    Invoke-WebRequest -UseBasic -Uri $ModelInfo.URL -OutFile $OutFile
+                    #Start-BitsTransfer -Source $ModelInfo.URL -Destination $OutFile
+                } catch {
+                    Write-Warning "Download attempt $Tries failed"
+                }
+                $FileHashMatch = Test-DellPackHash -FilePath $OutFile -Model $ModelInfo.Model -XML $XML -OSVersion $OSVersion
             }
-            $FileHashMatch = Test-DellPackHash -FilePath $OutFile -Model $ModelInfo.Model -XML $XML -OSVersion $OSVersion
+            [PSCustomObject]@{
+                'Path' = $OutFile
+                'Downloaded' = (Test-Path -Path $OutFile)
+                'VerifySucceeded' = $FileHashMatch
+            }    
+        } else {
+            Write-OutPut "WhatIf: Performing the operation ""Save File"" on target $($ModelInfo.URL) as destination file $OutFile"
         }
-        [PSCustomObject]@{
-            'Path' = $OutFile
-            'Downloaded' = (Test-Path -Path $OutFile)
-            'VerifySucceeded' = $FileHashMatch
-        }    
         # Cleanup for pipeline processing
-        Remove-Variable OutFile
-        Remove-Variable ModelInfo
-        Remove-Variable FileHashMatch
+        Remove-Variable OutFile -EA SilentlyContinue
+        Remove-Variable ModelInfo -EA SilentlyContinue
+        Remove-Variable FileHashMatch -EA SilentlyContinue
     }
     End{
 
@@ -199,7 +205,7 @@ function Get-DellUpdatedDriverPacks {
             # Write a new cache file
             $UpdatedModels = Get-DellDriverCabPackInfo -XML (Get-DellDriverCatalogue)
             $UpdatedModels | Export-CSV -NoTypeInformation -Path $CacheFile
-            return $UpdatedModels
+            $NewData = $UpdatedModels
         } else {
             Write-Verbose "Importing cachedata from $CacheFile"
             $CacheData = Import-CSV $CacheFile
@@ -224,6 +230,8 @@ function Get-DellUpdatedDriverPacks {
                 Write-Debug "Comparing new data for model $NewModel with cache $($CacheModel.Model)"
                 Compare-Object -Ref $psItem -Diff $CacheModel -Property Version
             }
+        } elseif ($NewModelData) {
+            $NewModelData
         }
 
     }
@@ -311,7 +319,7 @@ function Get-DellDriverCabPackInfo {
         }
         $ValidPackages | ForEach-Object {
             [PSCustomObject]@{
-                'Model' = $Model
+                'Model' = $psItem.SupportedSystems.Brand.Model.name
                 'Version' = $psItem.dellVersion
                 'URL' = "https://downloads.dell.com/$($psItem.path)"
                 'ReleaseDate' = (Get-Date $psItem.dateTime -Format "yyyy-MM-dd")
@@ -323,8 +331,9 @@ function Get-DellDriverCabPackInfo {
 
 function Save-NewDriverPacks {
     [CmdLetBinding()]
-    Param($ModelFile='.\models.txt',$CacheFile=".\DriverPackageCache.csv")
-    Get-Content -Path $ModelFile | Get-DellUpdatedDriverPacks -CacheFile $CacheFile | Save-DellDriverPack
+    Param($ModelFile='.\models.txt',$CacheFile=".\DriverPackageCache.csv",
+    $OutPath=".\",[switch]$Whatif)
+    Get-Content -Path $ModelFile | Get-DellUpdatedDriverPacks -CacheFile $CacheFile | Save-DellDriverPack -OutPath $OutPath -WhatIf:$Whatif
     # Update Cache
     Get-DellDriverCabPackInfo -XML (Get-DellDriverCatalogue) | Export-CSV -Path $CacheFile -NoTypeInformation
 }
