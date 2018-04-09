@@ -115,7 +115,7 @@ function Save-DellDriverPack {
                 }
             }
             [PSCustomObject]@{
-		'Model' = $Model
+                'Model' = $Model
                 'Path' = $OutFile
                 'Downloaded' = (Test-Path -Path $OutFile)
                 'VerifySucceeded' = $FileHashMatch
@@ -325,8 +325,9 @@ function Get-DellDriverCabPackInfo {
             }
         }
         $ValidPackages | ForEach-Object {
-	    $Package = $psItem
-            $psItem.SupportedSystems.Brand.Model.name | ForEach-Object {
+	        $Package = $psItem
+            $SupportedModels = $psItem.SupportedSystems.Brand.Model.name | Select-Object -Unique
+            $SupportedModels | ForEach-Object {
                 [PSCustomObject]@{
                     'Model' = $_
                     'Version' = $Package.dellVersion
