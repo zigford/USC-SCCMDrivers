@@ -69,6 +69,7 @@ function Save-DellDriverPack {
         $XML = Get-DellDriverCatalogue
     }
     Process{
+	# Check if model info has been supplied by an object (ie, Get-DellDriverCabPackinfo)
         if ($Model.Model) {
             Write-Verbose "Detected Model Object"
             $ModelInfo = $Model
@@ -79,15 +80,20 @@ function Save-DellDriverPack {
             }
         }
         If (-Not $ModelInfo){
+	    # model must have been supplied as a string. Get the DellDriverCabPackInfo using the function here
             $ModelInfo = Get-DellDriverCabPackInfo -Model $Model -XML $XML -OSVersion $OSVersion
         }
         If (-Not $OutFile) {
+            # if the outfil hasn't been manually specified, let's construct it.
             If (-Not ($OutPath)){
+                # if the outpath hasn't been specified, use current directory
                 $OutPath = (Get-Location).Path
             }
+            # Construected out file
             $OutFile = Join-Path -Path $OutPath -ChildPath "$Model-$($ModelInfo.Version).cab"
         } 
         If (-Not (Test-Path -Path (Split-Path -Path $OutFile -Parent) -ErrorAction SilentlyContinue)) {
+            # make sure the outpath directory has been created
             New-Item -Path (Split-Path -Path $OutFile -Parent) -ItemType Directory -Force
         }
         Write-Verbose "Downloading Cab pack $($ModelInfo.Model)"
@@ -97,18 +103,19 @@ function Save-DellDriverPack {
             $FileHashMatch = Test-DellPackHash -FilePath $OutFile -Model $ModelInfo.Model -XML $XML -OSVersion $OSVersion
         }
         If (-Not $WhatIf) {
-            While ($Tries -lt $DownloadAttempts -and -Not (Test-Path -Path $OutFile) -and $FileHashMatch -ne $True ){
+            While ($Tries -lt $DownloadAttempts -and $FileHashMatch -ne $True ){
                 $Tries++
                 Try {
                     Write-Verbose "Downloading $($ModelInfo.URL)"
                     Invoke-WebRequest -UseBasic -Uri $ModelInfo.URL -OutFile $OutFile
+                    $FileHashMatch = Test-DellPackHash -FilePath $OutFile -Model $ModelInfo.Model -XML $XML -OSVersion $OSVersion
                     #Start-BitsTransfer -Source $ModelInfo.URL -Destination $OutFile
                 } catch {
                     Write-Warning "Download attempt $Tries failed"
                 }
-                $FileHashMatch = Test-DellPackHash -FilePath $OutFile -Model $ModelInfo.Model -XML $XML -OSVersion $OSVersion
             }
             [PSCustomObject]@{
+		'Model' = $Model
                 'Path' = $OutFile
                 'Downloaded' = (Test-Path -Path $OutFile)
                 'VerifySucceeded' = $FileHashMatch
@@ -250,7 +257,7 @@ function Get-DellDriverCabPackInfo {
             "Windows8",
             "Windows8.1"
         )]$OSVersion='Windows10',
-        [Parameter(Mandatory=$True)]$XML
+        $XML=(Get-DellDriverCatalogue)
     )
     <#
         .SYNOPSIS
@@ -318,12 +325,15 @@ function Get-DellDriverCabPackInfo {
             }
         }
         $ValidPackages | ForEach-Object {
-            [PSCustomObject]@{
-                'Model' = $psItem.SupportedSystems.Brand.Model.name
-                'Version' = $psItem.dellVersion
-                'URL' = "https://downloads.dell.com/$($psItem.path)"
-                'ReleaseDate' = (Get-Date $psItem.dateTime -Format "yyyy-MM-dd")
-                'MD5' = $psItem.hashMD5
+	    $Package = $psItem
+            $psItem.SupportedSystems.Brand.Model.name | ForEach-Object {
+                [PSCustomObject]@{
+                    'Model' = $_
+                    'Version' = $Package.dellVersion
+                    'URL' = "https://downloads.dell.com/$($Package.path)"
+                    'ReleaseDate' = (Get-Date $Package.dateTime -Format "yyyy-MM-dd")
+                    'MD5' = $Package.hashMD5
+                }
             }
         }
     }
