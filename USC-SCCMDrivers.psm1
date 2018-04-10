@@ -90,7 +90,8 @@ function Save-DellDriverPack {
                 $OutPath = (Get-Location).Path
             }
             # Construected out file
-            $OutFile = Join-Path -Path $OutPath -ChildPath "$Model-$($ModelInfo.Version).cab"
+            $Arch = "$(($OSVersion).Remove(3))$(($OSVersion).Remove(0,7))x64"
+            $OutFile = Join-Path -Path $OutPath -ChildPath "$Arch-$Model-$($ModelInfo.Version).cab"
         } 
         If (-Not (Test-Path -Path (Split-Path -Path $OutFile -Parent) -ErrorAction SilentlyContinue)) {
             # make sure the outpath directory has been created
@@ -650,12 +651,43 @@ Param($Model,$DriverCAB,$Architecture='Win10x64',$DriverStoreRoot='\\usc.interna
     $ErrorActionPreference = 'Stop'
     #Import-Module "$(Split-Path -Path $PSCommandPath -Parent)\DriverUpdateCommands.ps1"
     
-    $NewDrivers = Extract-DriverPackage -DriverCAB $DriverCAB
-    $ArchiveFolder = Archive-DriverStore -Model $Model -DriverStoreRoot $DriverStoreRoot -Architecture $Architecture
+    $NewDrivers = Extract-CfgDriverPackage -DriverCAB $DriverCAB
+    $ArchiveFolder = Archive-CfgDriverStore -Model $Model -DriverStoreRoot $DriverStoreRoot -Architecture $Architecture
     #$NewDrivers = Get-Item 'C:\Users\jpharris\AppData\Local\Temp\1516192286'
     #$ArchiveFolder = Get-Item '\\usc.internal\usc\appdev\General\DriverStore\Win10x64\Surface Book\_Archive\15022016'
-    Remove-AllDriversFromPackage -Architecture $Architecture -Model $Model -ArchiveFolder $ArchiveFolder -SiteCode $SiteCode -DriverStoreRoot $DriverStoreRoot
-    $NewSource = Add-NewDriversToDriverStore -DriverRoot $NewDrivers -Architecture $Architecture -Model $Model -DriverStoreRoot $DriverStoreRoot
-    Import-DriversToSCCM -DriverSource $NewSource -Model $Model -Architecture $Architecture -SiteCode $SiteCode -DriverPackageRoot $DriverPackageRoot
-    Cleanup-TempFiles -DriverTemp $NewDrivers
+    Remove-CfgAllDriversFromPackage -Architecture $Architecture -Model $Model -ArchiveFolder $ArchiveFolder -SiteCode $SiteCode -DriverStoreRoot $DriverStoreRoot
+    $NewSource = Add-CfgNewDriversToDriverStore -DriverRoot $NewDrivers -Architecture $Architecture -Model $Model -DriverStoreRoot $DriverStoreRoot
+    Import-CfgDriversToSCCM -DriverSource $NewSource -Model $Model -Architecture $Architecture -SiteCode $SiteCode -DriverPackageRoot $DriverPackageRoot
+    Cleanup-CfgTempFiles -DriverTemp $NewDrivers
+}
+
+function Import-CfgDriverCabs {
+    <#
+    .SYNOPSIS
+        Import all driver cabs or zips in a directory into config manager. Adding drivers to packages and categories based off the name of the cab
+    .DESCRIPTION
+        List a specified (or current) directory for cab/zip files. For each one found, expand the archive and import all included .inf files. Create/add drivers to a package and categopry based off the name of the zip/cab file.
+    .PARAMETER $CabStore
+         Specify the directory housing the cab files. If not specified, use the present working directory
+    .EXAMPLE
+        Import-CfgDriverCabs -CabStore \\usc.internal\usc\appdev\General\Packaging\DriverCabs
+    .NOTES
+        Author: Jesse Harris
+        Date: 10/04/2018
+    .LINK
+        https://github.com/zigford/USC-SCCMDrivers
+    #>
+    [CmdletBinding()]
+    Param($CabStore = "$(Get-Location)")
+    Push-Location
+    $DriverPackages = Get-ChildItem -Path $CabStore | Where-Object { $_.Extension -in '.cab','.zip' }
+    $ErrorActionPreference = 'Stop'
+    ForEach ($DriverPackage in $DriverPackages) {
+        Write-Verbose "Working on $DriverPackage"
+        $StrSplit = $DriverPackage.BaseName.Split('-')
+        $Architecture = $StrSplit[0]
+        $Model = $StrSplit[1]
+        Update-CfgDriverPackage -Model $Model -DriverCAB $DriverPackage.FullName -Architecture $Architecture -Verbose
+    }
+    Pop-Location
 }
