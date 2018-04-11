@@ -452,8 +452,8 @@ function Remove-CfgAllDriversFromPackage {
 Param($Model,$Architecture='Win10x64',$ArchiveFolder,$SiteCode='SC1',$DriverStoreRoot='\\usc.internal\usc\appdev\General\DriverStore')
     $ErrorActionPreference='Stop'
     
-    Import-Module "$(Find-ConfigManagerModulePath)\ConfigurationManager.psd1" -Verbose:$False
     Push-Location
+    Import-Module "$(Find-ConfigManagerModulePath)\ConfigurationManager.psd1" -Verbose:$False
     #"$Architecture-$Model"
     Set-Location "$($SiteCode):\" -Verbose:$False
     $DriverPackage = Get-CMDriverPackage -Name "$Architecture-$Model" -Verbose:$False
@@ -461,6 +461,7 @@ Param($Model,$Architecture='Win10x64',$ArchiveFolder,$SiteCode='SC1',$DriverStor
 
     If (-Not $DriverPackage) {
         Write-Verbose "Could not find Driver Package $Architecture-$Model"
+        Pop-Location
         #exit 1
     } Else {
 
@@ -480,8 +481,8 @@ Param($Model,$Architecture='Win10x64',$ArchiveFolder,$SiteCode='SC1',$DriverStor
         }
         $SafeToDeleteDriverSources = @()
         Write-Verbose "There are $($OldDriverListID.Count) drivers which were modified. Starting to check if they are applicable to other models"
+        Pop-Location
         ForEach ($DriverID in $OldDriverListID) {
-            Pop-Location
             If ($ArchiveFolder.FullName) {
                 $ArchiveFolderName = $ArchiveFolder.FullName
                 Write-Verbose "Archive folder is an object and full name is $($ArchiveFolder.FullName)"
@@ -525,15 +526,16 @@ Param($Model,$Architecture='Win10x64',$ArchiveFolder,$SiteCode='SC1',$DriverStor
                         Write-Error "Unable to update driver source to new location $NewDriverSource"
                     }
                 }
+                Pop-Location
             } Else {
                 Write-Verbose "Removing driver $DriverName with ID $DriverID as this driver is no longer used by any other categories"
                 Write-Verbose "Categories are $((Get-CMDriver -Id $DriverID -Verbose:$False).LocalizedCategoryInstanceNames)"
                 Remove-CMDriver -Id $DriverID -Confirm:$False -Verbose:$False -Force
+                Pop-Location
                 If ($NewDriverSource -notin $SafeToDeleteDriverSources) {
                     $SafeToDeleteDriverSources += $NewDriverSource
-                    Pop-Location
                     Write-Verbose "Moving $NewDriverSource content into SafeToDelete Zone"
-                    If ($Drive.Drive.ToString -ne 'C') {Set-Location $env:WinDir; Write-Verbose "Had to update location to C:"}
+                    If ($Drive.Drive.ToString -ne 'C') {Set-Location $env:SystemDrive; Write-Verbose "Had to update location to $env:systemdrive"}
                     #Should test if anything else has already moved it here.
                     Try {
                         Copy-Item -Path $NewDriverSource -Destination $SafeToDelete -Recurse
@@ -545,7 +547,6 @@ Param($Model,$Architecture='Win10x64',$ArchiveFolder,$SiteCode='SC1',$DriverStor
             }
         }
     }
-    Pop-Location
 }
 
 function Add-CfgNewDriversToDriverStore {
@@ -568,8 +569,8 @@ Param($DriverRoot,$Architecture,$Model,$DriverStoreRoot='\\usc.internal\usc\appd
 function Import-CfgDriversToSCCM {
 [CmdletBinding()]
 Param($DriverSource,$Model,$Architecture,$SiteCode,$DriverPackageRoot)
-    Push-Location
 
+    Push-Location
     Import-Module "$(Find-ConfigManagerModulePath)\ConfigurationManager.psd1" -Verbose:$False
     Set-Location "$($SiteCode):\" -Verbose:$False
     $CategoryName = "$Architecture-$Model"
@@ -590,12 +591,12 @@ Param($DriverSource,$Model,$Architecture,$SiteCode,$DriverPackageRoot)
     $DriverFolders | ForEach-Object {
         $i=1
         $InfFiles = Get-ChildItem -Path $_.FullName -Recurse *.inf | Where-Object {$_.PSIsContainer -eq $False }
+        Push-Location
+        Set-Location "$($SiteCode):\" -Verbose:$False
         $InfFiles | ForEach-Object {
-        Write-Progress -Activity "Importing Drivers" -Status "Importing $($_.Name) - $i of $($InfFiles.Count)" -PercentComplete ((100 / $InfFiles.Count)*$i)
-        $i++
+            Write-Progress -Activity "Importing Drivers" -Status "Importing $($_.Name) - $i of $($InfFiles.Count)" -PercentComplete ((100 / $InfFiles.Count)*$i)
+            $i++
             Try {
-                Push-Location
-                Set-Location "$($SiteCode):\" -Verbose:$False
                 Write-Verbose "Importing $($_.FullName)"
                 $Driver = Import-CMDriver -UncFileLocation $_.FullName -ImportDuplicateDriverOption AppendCategory -EnableAndAllowInstall $True -AdministrativeCategory $Category -Verbose:$False
                 If ($Driver.ContentSourcePath -match '_Archive') {
@@ -606,13 +607,13 @@ Param($DriverSource,$Model,$Architecture,$SiteCode,$DriverPackageRoot)
             } Catch {
                 Write-Verbose "Had trouble importing $_.Fullname"
             }
-            Pop-Location
         }
+        Pop-Location
         #Import-CMDriver -UncFileLocation $_.FullName -ImportFolder -ImportDuplicateDriverOption AppendCategory -EnableAndAllowInstall $True -AdministrativeCategory $Category -DriverPackage $DriverPackage
         Write-Progress -Activity "Importing Drivers" -Completed
     }
     #Now add all the drivers to the package
-    Pop-Location
+    Push-Location
     Set-Location "$($SiteCode):\" -Verbose:$False
     $i = 1
     $DriversToAdd = Get-CMDriver -Verbose:$False | Where-Object {$CategoryName -in $_.LocalizedCategoryInstanceNames} 
