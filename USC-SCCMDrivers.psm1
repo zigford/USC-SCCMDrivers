@@ -340,6 +340,42 @@ function Get-DellDriverCatalogue {
     Remove-Item -Path $CatalogExtractPath -Recurse -Force
 }
 
+function Get-ShortOSName {
+    <#
+    .SYNOPSIS
+        Get the shortname of an os
+    .DESCRIPTION
+        Providing the long name of an os and arch, return the short name for use in driver scripts
+    .PARAMETER OSVersion
+        Specify the OS Version, eg, Windows10
+    .PARAMETER Architecture
+        Specify the arch of the os, eg x64
+    .EXAMPLE
+        Get-ShortOSName Windows10
+
+        Win10x64
+    .NOTES
+        notes
+    .LINK
+        online help
+    #>
+        Param([ValidateSet(
+            'Windows10',
+            'Windows7'
+            )]$OSVersion='Windows10',
+            [ValidateSet(
+                'x64',
+                'x86'
+            )]$Architecture='x64'
+        )
+    $A = switch ($OSVersion) {
+        Windows10 {'Win10'}
+        Windows7 {'Win7'}
+        Default {'Win10'}
+    }
+    return "$A$Architecture"
+}
+
 function Save-DellDriverPack {
     <#
     .SYNOPSIS
@@ -391,7 +427,7 @@ function Save-DellDriverPack {
             }
         }
         If (-Not $ModelInfo){
-	    # model must have been supplied as a string. Get the DellDriverCabPackInfo using the function here
+            # model must have been supplied as a string. Get the DellDriverCabPackInfo using the function here
             $ModelInfo = Get-DellDriverCabPackInfo -Model $Model -XML $XML -OSVersion $OSVersion
         }
         If (-Not $OutFile) {
@@ -401,7 +437,8 @@ function Save-DellDriverPack {
                 $OutPath = (Get-Location).Path
             }
             # Construected out file
-            $OutFile = Join-Path -Path $OutPath -ChildPath "$Model-$($ModelInfo.Version).cab"
+            $OSArch = Get-ShortOSName -OSVersion Windows10
+            $OutFile = Join-Path -Path $OutPath -ChildPath "$OSArch-$Model-$($ModelInfo.Version).cab"
         } 
         If (-Not (Test-Path -Path (Split-Path -Path $OutFile -Parent) -ErrorAction SilentlyContinue)) {
             # make sure the outpath directory has been created
