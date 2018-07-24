@@ -1,3 +1,314 @@
+If (-Not (Get-Command Expand-Archive -ErrorAction SilentlyContinue)) {
+    #Not WMF5, implement our own expand archive
+    function Expand-Archive {
+    [CmdletBinding()]
+    Param($Path,$DestinationPath)
+        Add-Type -assembly “system.io.compression.filesystem”
+        [io.compression.zipfile]::ExtractToDirectory($Path, $DestinationPath)
+    }
+}
+
+
+function Find-ConfigManagerModulePath {
+[CmdletBinding()]
+Param()
+    $PossibleLocations = 'C:\Program Files (x86)\Microsoft Configuration Manager\AdminConsole\bin\',
+        'D:\Program Files\Microsoft Configuration Manager\AdminConsole\bin\',
+        'D:\Program Files (x86)\Microsoft Configuration Manager\AdminConsole\bin\',
+        'C:\Program Files\Microsoft Configuration Manager\AdminConsole\bin\'
+    $i=0
+    Do {
+        $Result = Test-Path -Path $PossibleLocations[$i]
+        $i++
+        } Until ($Result -eq $True)
+    return $PossibleLocations[$i-1]
+}
+
+function Extract-CfgDriverPackage {
+[CmdletBinding()]
+Param($DriverCAB)
+$ErrorActionPreference='Stop'
+
+    #Does the CAB exist?
+    If (-Not (Test-Path -Path $DriverCAB)) {
+        Write-Error "Could not access CAB/ZIP file"
+    }
+
+    $TempFolderPath = "$($env:Temp)\ExtractDriverPackage"
+    If (Test-Path -Path $TempFolderPath) {
+        Remove-Item -Path $TempFolderPath -Recurse -Force
+    }
+    $TempFolder = New-Item -Path $TempFolderPath -ItemType Directory
+    Write-Verbose "Attempting to extract archive $DriverCAB to temp folder: $($TempFolder.FullName)"
+    Switch ((Get-Item -Path $DriverCAB).Extension) {
+      .zip { 
+        Try {
+            Write-Verbose "Zip file detected. Windows 10 or WMF 5 required"
+            Expand-Archive -Path $DriverCAB -DestinationPath $TempFolder.FullName 
+        } Catch {
+            $TempFolder | Remove-Item -Force
+            Write-Error "Unable to fully extract archive $DriverCAB"
+        }
+      }
+      .cab { 
+        Try {
+            Write-Verbose "CAB file $DriverCAB detected. Using expand.exe"
+            expand.exe $DriverCAB -F:*.* $TempFolder.FullName | Out-Null
+        } Catch {
+            $TempFolder | Remove-Item -Force
+            Write-Error "Unable to fully expand archive $DriverCAB"
+        }
+      }
+      default {$TempFolder | Remove-Item -Force; Write-Error "Unable to extract compressed archive"}
+    }
+
+    return $TempFolder
+
+}
+
+function Archive-CfgDriverStore {
+[CmdletBinding()]
+Param($Model,$DriverStoreRoot='\\usc.internal\usc\appdev\General\DriverStore',$Architecture='Win10x64')
+    $ErrorActionPreference='Stop'
+
+    If (-Not (Test-Path -Path "$DriverStoreRoot\$Architecture\$Model")) {
+        Write-Verbose "Could not locate driverstore model $DriverStoreRoot\$Architecture\$Model"
+        New-Item -Path "$DriverStoreRoot\$Architecture" -Name $Modle -ItemType Directory -Force
+        $ArchiveFolder = New-Item -Path "$DriverStoreRoot\$Architecture\$Model\_Archive" -Name $FolderDate -ItemType Directory -Force
+    } Else {
+        $FolderDate = Get-Date -Format ddMMyyyy
+        If (-Not (Test-Path -Path "$DriverStoreRoot\$Architecture\$Model\_Archive\$FolderDate")) {
+            $ArchiveFolder = New-Item -Path "$DriverStoreRoot\$Architecture\$Model\_Archive" -Name $FolderDate -ItemType Directory -Force    
+        } Else {
+            Write-Verbose "An archive has already occured today. Lets assume it previously errored and we are trying again"
+            $ArchiveFolder = Get-Item "$DriverStoreRoot\$Architecture\$Model\_Archive\$FolderDate"
+            return $ArchiveFolder
+        }        
+        Try {
+            Get-ChildItem -Path "$DriverStoreRoot\$Architecture\$Model" -Filter *.* -Exclude _Archive | Move-Item -Destination $ArchiveFolder
+        } Catch {
+            Write-Error "Wasn't able to archive folders in $DriverStoreRoot\$Architecture\$Model"
+        }
+    }
+
+    return $ArchiveFolder
+
+}
+
+function Remove-CfgAllDriversFromPackage {
+[CmdletBinding()]
+Param($Model,$Architecture='Win10x64',$ArchiveFolder,$SiteCode='SC1',$DriverStoreRoot='\\usc.internal\usc\appdev\General\DriverStore')
+    $ErrorActionPreference='Stop'
+    
+    Import-Module "$(Find-ConfigManagerModulePath)\ConfigurationManager.psd1" -Verbose:$False
+    Push-Location
+    #"$Architecture-$Model"
+    Set-Location "$($SiteCode):\" -Verbose:$False
+    $DriverPackage = Get-CMDriverPackage -Name "$Architecture-$Model" -Verbose:$False
+    $Category = Get-CMCategory -Name "$Architecture-$Model" -Verbose:$False
+
+    If (-Not $DriverPackage) {
+        Write-Verbose "Could not find Driver Package $Architecture-$Model"
+        #exit 1
+    } Else {
+
+        $OldDriverListID = @()
+        #$DriverPackage.Name 
+        Get-CMDriver -DriverPackageName $DriverPackage.Name -Verbose:$False| ForEach-Object {
+            $DriverID = $_.CI_ID
+            $DriverName = $_.LocalizedDisplayName
+            $OldDriverListID += $DriverID
+            Write-Verbose "Removing driver $($_.LocalizedDisplayName) from package"
+            Try {
+                Remove-CMDriverFromDriverPackage -DriverId $DriverID -DriverPackage $DriverPackage -Force -Verbose:$False
+                #Set-CMDriver -InputObject $_ -RemoveAdministrativeCategory $Category -Verbose:$False
+            } Catch {
+                Write-Verbose "Failed to remove driver $DriverName content from $($DriverPackage.Name)"
+            }
+        }
+        $SafeToDeleteDriverSources = @()
+        Write-Verbose "There are $($OldDriverListID.Count) drivers which were modified. Starting to check if they are applicable to other models"
+        ForEach ($DriverID in $OldDriverListID) {
+            Pop-Location
+            If ($ArchiveFolder.FullName) {
+                $ArchiveFolderName = $ArchiveFolder.FullName
+                Write-Verbose "Archive folder is an object and full name is $($ArchiveFolder.FullName)"
+                If (-Not (Test-Path -Path "$($ArchiveFolder.FullName)\SafeToDelete")) {
+                    $SafeToDelete = New-Item -Path $ArchiveFolder.FullName -Name SafeToDelete -ItemType Directory -Force
+                } Else {
+                    $SafeToDelete = Get-Item -Path "$($ArchiveFolder.FullName)\SafeToDelete"
+                }
+            } Else {
+                $ArchiveFolderName = $ArchiveFolder
+                Write-Verbose "Either ArchiveFolder is not an object or is literal path $ArchiveFolder"
+                If (-Not (Test-Path -Path "$ArchiveFolder\SafeToDelete")) {
+                    $SafeToDelete = New-Item -Path $ArchiveFolder -Name SafeToDelete -ItemType Directory -Force
+                } Else {
+                    $SafeToDelete = Get-Item -Path $ArchiveFolder\SafeToDelete
+                }
+            }
+            $ArchiveFolderBaseName = (Get-Item $ArchiveFolder).BaseName
+            Push-Location
+            Set-Location "$($SiteCode):\" -Verbose:$False
+            $Driver = Get-CMDriver -Id $DriverID -Verbose:$False
+            $DriverName = $Driver.LocalizedDisplayName
+            $CurrentDriverSource = $Driver.ContentSourcePath
+            Write-Verbose "Replacing $DriverStoreRoot\$Architecture\$Model with $ArchiveFolderName out of $CurrentDriverSource"
+            $NewDriverSource = $CurrentDriverSource -ireplace "$Architecture\\$Model","$Architecture\$Model\_Archive\$ArchiveFolderBaseName"
+            Write-Verbose "NewDrvierSource is $NewDriverSource"
+            If (($Driver.LocalizedCategoryInstanceNames).Count -gt 1) {
+                Write-Verbose "Removing Category as this driver is still valid in another category"
+                Try {
+                    Set-CMDriver -Id $DriverID -RemoveAdministrativeCategory $Category -Verbose:$False
+                } Catch {
+                    Write-Error "Unable to remove administrative category from driver id $DriverID"
+                }
+                
+                If ($CurrentDriverSource -notmatch '_Archive') {
+                    #Now we must update the source location as it is now archived.
+                    Write-Verbose "Updating driver source location with new archived path"
+                    Try {
+                        Set-CMDriver -Id $DriverID -DriverSource $NewDriverSource -Verbose:$False
+                    } Catch {
+                        Write-Error "Unable to update driver source to new location $NewDriverSource"
+                    }
+                }
+            } Else {
+                Write-Verbose "Removing driver $DriverName with ID $DriverID as this driver is no longer used by any other categories"
+                Write-Verbose "Categories are $((Get-CMDriver -Id $DriverID -Verbose:$False).LocalizedCategoryInstanceNames)"
+                Remove-CMDriver -Id $DriverID -Confirm:$False -Verbose:$False -Force
+                If ($NewDriverSource -notin $SafeToDeleteDriverSources) {
+                    $SafeToDeleteDriverSources += $NewDriverSource
+                    Pop-Location
+                    Write-Verbose "Moving $NewDriverSource content into SafeToDelete Zone"
+                    If ($Drive.Drive.ToString -ne 'C') {Set-Location $env:WinDir; Write-Verbose "Had to update location to C:"}
+                    #Should test if anything else has already moved it here.
+                    Try {
+                        Copy-Item -Path $NewDriverSource -Destination $SafeToDelete -Recurse
+                        Remove-Item -Path $NewDriverSource -Confirm:$False -Recurse
+                    } Catch {
+                        Write-Verbose "Could not move driver to safe zone"
+                    }
+                }
+            }
+        }
+    }
+    Pop-Location
+}
+
+function Add-CfgNewDriversToDriverStore {
+[CmdletBinding()]
+Param($DriverRoot,$Architecture,$Model,$DriverStoreRoot='\\usc.internal\usc\appdev\General\DriverStore')
+    Write-Verbose "DriverRoot is $DriverRoot"
+    If ($DriverRoot -eq $Null -or (Test-Path -Path $DriverRoot) -eq $False) {
+        Write-Error "Could not locate driver root $DriverRoot or DriverRoot variable null"
+    }
+
+    Try {
+        $DriverRoot | Get-ChildItem | Move-Item -Destination "$DriverStoreRoot\$Architecture\$Model" -Force
+        $DriverRoot | Remove-Item
+        return "$DriverStoreRoot\$Architecture\$Model"
+    } Catch {
+        Write-Error "Unable to move drivers $DriverRoot to driverstore"
+    }
+}
+
+function Import-CfgDriversToSCCM {
+[CmdletBinding()]
+Param($DriverSource,$Model,$Architecture,$SiteCode,$DriverPackageRoot)
+    Push-Location
+
+    Import-Module "$(Find-ConfigManagerModulePath)\ConfigurationManager.psd1" -Verbose:$False
+    Set-Location "$($SiteCode):\" -Verbose:$False
+    $CategoryName = "$Architecture-$Model"
+    $Category = Get-CMCategory -Name $CategoryName -Verbose:$False
+    If (-Not ($Category)) {
+        Write-Verbose "Driver category $CategoryName does not exist. Creating..."
+        $Category = New-CMCategory -Name $CategoryName -CategoryType DriverCategories -Verbose:$False
+    }
+    $DriverPackageName = $CategoryName
+    $DriverPackage = Get-CMDriverPackage -Name $DriverPackageName -Verbose:$False
+    If (-Not ($DriverPackage)) {
+        Write-Verbose "Driver package $DriverPackageName does not exist. Creating..."
+        $DriverPackage = New-CMDriverPackage -Name $DriverPackageName -Path "$DriverPackageRoot\$DriverPackageName" -Verbose:$False
+    }
+    Pop-Location
+    $DriverFolders = Get-ChildItem -Path $DriverSource -Exclude _Archive
+    Write-Verbose "Importing Drivers from $DriverSource"
+    $DriverFolders | ForEach-Object {
+        $i=1
+        $InfFiles = Get-ChildItem -Path $_.FullName -Recurse *.inf
+        $InfFiles | ForEach-Object {
+        Write-Progress -Activity "Importing Drivers" -Status "Importing $($_.Name) - $i of $($InfFiles.Count)" -PercentComplete ((100 / $InfFiles.Count)*$i)
+        $i++
+            Try {
+                Push-Location
+                Set-Location "$($SiteCode):\" -Verbose:$False
+                Write-Verbose "Importing $($_.FullName)"
+                $Driver = Import-CMDriver -UncFileLocation $_.FullName -ImportDuplicateDriverOption AppendCategory -EnableAndAllowInstall $True -AdministrativeCategory $Category -Verbose:$False
+                If ($Driver.ContentSourcePath -match '_Archive') {
+                    Write-Verbose "Duplicate driver detected. Updating driver to new source path"
+                    $SourcePath = Split-Path -Path $_ -Parent
+                    Set-CMDriver -InputObject $Driver -DriverSource $SourcePath -Description 'Updated source location from Archive'
+                }
+            } Catch {
+                Write-Verbose "Had trouble importing $_.Fullname"
+            }
+            Pop-Location
+        }
+        #Import-CMDriver -UncFileLocation $_.FullName -ImportFolder -ImportDuplicateDriverOption AppendCategory -EnableAndAllowInstall $True -AdministrativeCategory $Category -DriverPackage $DriverPackage
+        Write-Progress -Activity "Importing Drivers" -Completed
+    }
+    #Now add all the drivers to the package
+    Pop-Location
+    Set-Location "$($SiteCode):\" -Verbose:$False
+    $i = 1
+    $DriversToAdd = Get-CMDriver -Verbose:$False | Where-Object {$CategoryName -in $_.LocalizedCategoryInstanceNames} 
+    $DriversToAdd | ForEach-Object {
+        $ObjResult = [PSCustomObject]@{
+            'DriverPackage' = $DriverPackageName
+            'Driver' = $_.LocalizedDisplayName
+        }
+        Write-Progress -Activity "Adding Drivers to package $DriverPackageName" -Status "Adding $($_.LocalizedDisplayName) - $i of $($DriversToAdd.Count)" -PercentComplete ((100 / $DriversToAdd.Count)*$i)
+        Write-Verbose "Adding $($_.LocalizedDisplayName) to $DriverPackageName"
+        Try {
+            Add-CMDriverToDriverPackage -Driver $_ -DriverPackageName $DriverPackageName -Verbose:$False
+            $ObjResult | Add-Member -MemberType NoteProperty -Name 'Imported' -Value $True -PassThru
+        } catch {
+            $ObjResult | Add-Member -MemberType NoteProperty -Name 'Imported' -Value $False -PassThru
+        }
+        $i++
+    }
+    Write-Progress -Activity "Adding Drivers to package $DriverPackageName" -Completed
+    Pop-Location
+}
+
+function Cleanup-CfgTempFiles {
+[CmdLetBinding()]
+Param($DriverTemp)
+
+    If (Test-Path -Path $DriverTemp) {
+        Remove-Item -Path $DriverTemp -Recurse -Force
+    }
+
+}
+
+function Update-CfgDriverPackage {
+[CmdletBinding()]
+Param($Model,$DriverCAB,$Architecture='Win10x64',$DriverStoreRoot='\\usc.internal\usc\appdev\General\DriverStore',$SiteCode='SC1',$DriverPackageRoot='\\usc.internal\usc\appdev\SCCMPackages\DriverPackages')
+    $ErrorActionPreference = 'Stop'
+    #Import-Module "$(Split-Path -Path $PSCommandPath -Parent)\DriverUpdateCommands.ps1"
+    
+    $NewDrivers = Extract-DriverPackage -DriverCAB $DriverCAB
+    $ArchiveFolder = Archive-DriverStore -Model $Model -DriverStoreRoot $DriverStoreRoot -Architecture $Architecture
+    #$NewDrivers = Get-Item 'C:\Users\jpharris\AppData\Local\Temp\1516192286'
+    #$ArchiveFolder = Get-Item '\\usc.internal\usc\appdev\General\DriverStore\Win10x64\Surface Book\_Archive\15022016'
+    Remove-AllDriversFromPackage -Architecture $Architecture -Model $Model -ArchiveFolder $ArchiveFolder -SiteCode $SiteCode -DriverStoreRoot $DriverStoreRoot
+    $NewSource = Add-NewDriversToDriverStore -DriverRoot $NewDrivers -Architecture $Architecture -Model $Model -DriverStoreRoot $DriverStoreRoot
+    Import-DriversToSCCM -DriverSource $NewSource -Model $Model -Architecture $Architecture -SiteCode $SiteCode -DriverPackageRoot $DriverPackageRoot
+    Cleanup-TempFiles -DriverTemp $NewDrivers
+}
+
 function Get-DellDriverCatalogue {
     <#
     .SYNOPSIS
@@ -340,11 +651,22 @@ function Get-DellDriverCabPackInfo {
     }
 }
 
+function Get-SupportedModels {
+    Param($ModelFile)
+
+    if ($ModelFile) {
+        Get-Content -Path $ModelFile
+    } else {
+        (Invoke-WebRequest -Uri 'https://gist.githubusercontent.com/zigford/5977132f6a48868a37b0a1a4c0678470/raw/a112bae6d994138147247f60734416071e59176e/models.txt' -UseBasicParsing).Content
+    }
+
+}
+
 function Save-NewDriverPacks {
     [CmdLetBinding()]
-    Param($ModelFile='.\models.txt',$CacheFile=".\DriverPackageCache.csv",
+    Param($ModelFile,$CacheFile=".\DriverPackageCache.csv",
     $OutPath=".\",[switch]$Whatif)
-    Get-Content -Path $ModelFile | Get-DellUpdatedDriverPacks -CacheFile $CacheFile | Save-DellDriverPack -OutPath $OutPath -WhatIf:$Whatif
+    Get-SupportedModels -ModelFile:$ModelFile | Get-DellUpdatedDriverPacks -CacheFile $CacheFile | Save-DellDriverPack -OutPath $OutPath -WhatIf:$Whatif
     # Update Cache
     Get-DellDriverCabPackInfo -XML (Get-DellDriverCatalogue) | Export-CSV -Path $CacheFile -NoTypeInformation
 }
