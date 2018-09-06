@@ -694,7 +694,7 @@ function Get-SupportedModels {
     if ($ModelFile) {
         Get-Content -Path $ModelFile
     } else {
-        (Invoke-WebRequest -Uri 'https://gist.githubusercontent.com/zigford/5977132f6a48868a37b0a1a4c0678470/raw/a112bae6d994138147247f60734416071e59176e/models.txt' -UseBasicParsing).Content
+        (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/zigford/USC-SCCMDrivers/master/models.txt' -UseBasicParsing).Content
     }
 
 }
