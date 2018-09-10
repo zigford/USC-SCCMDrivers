@@ -1,13 +1,20 @@
+#$DriverStore = '/Volumes/appdev/General/DriverStore'
+$DriverStore = '/Users/harrisj/tmp/DriverStore'
+
 If (-Not (Get-Command Expand-Archive -ErrorAction SilentlyContinue)) {
     #Not WMF5, implement our own expand archive
     function Expand-Archive {
     [CmdletBinding()]
     Param($Path,$DestinationPath)
-        Add-Type -assembly “system.io.compression.filesystem”
+        Add-Type -assembly ï¿½system.io.compression.filesystemï¿½
         [io.compression.zipfile]::ExtractToDirectory($Path, $DestinationPath)
     }
 }
 
+#Set temp env directory for non-windows systems
+If (-Not (Get-ChildItem Env: | Where-Object {$_.Name -eq 'TEMP'})) {
+    New-Item -Path Env: -ItemType File -Name TEMP -Value $Env:TMPDIR
+}
 
 function Find-ConfigManagerModulePath {
 [CmdletBinding()]
@@ -24,7 +31,7 @@ Param()
     return $PossibleLocations[$i-1]
 }
 
-function Extract-CfgDriverPackage {
+function Expand-CfgDriverPackage {
 [CmdletBinding()]
 Param($DriverCAB)
 $ErrorActionPreference='Stop'
@@ -66,7 +73,7 @@ $ErrorActionPreference='Stop'
 
 }
 
-function Archive-CfgDriverStore {
+function Move-CfgDriverPackToArchive {
 [CmdletBinding()]
 Param($Model,$DriverStoreRoot='\\usc.internal\usc\appdev\General\DriverStore',$Architecture='Win10x64')
     $ErrorActionPreference='Stop'
@@ -283,7 +290,7 @@ Param($DriverSource,$Model,$Architecture,$SiteCode,$DriverPackageRoot)
     Pop-Location
 }
 
-function Cleanup-CfgTempFiles {
+function Remove-CfgTempFiles {
 [CmdLetBinding()]
 Param($DriverTemp)
 
@@ -299,16 +306,36 @@ Param($Model,$DriverCAB,$Architecture='Win10x64',$DriverStoreRoot='\\usc.interna
     $ErrorActionPreference = 'Stop'
     #Import-Module "$(Split-Path -Path $PSCommandPath -Parent)\DriverUpdateCommands.ps1"
     
-    $NewDrivers = Extract-DriverPackage -DriverCAB $DriverCAB
-    $ArchiveFolder = Archive-DriverStore -Model $Model -DriverStoreRoot $DriverStoreRoot -Architecture $Architecture
+    $NewDrivers = Expand-DriverPackage -DriverCAB $DriverCAB
+    $ArchiveFolder = Move-CfgDriverPackToArchive -Model $Model -DriverStoreRoot $DriverStoreRoot -Architecture $Architecture
     #$NewDrivers = Get-Item 'C:\Users\jpharris\AppData\Local\Temp\1516192286'
     #$ArchiveFolder = Get-Item '\\usc.internal\usc\appdev\General\DriverStore\Win10x64\Surface Book\_Archive\15022016'
     Remove-AllDriversFromPackage -Architecture $Architecture -Model $Model -ArchiveFolder $ArchiveFolder -SiteCode $SiteCode -DriverStoreRoot $DriverStoreRoot
     $NewSource = Add-NewDriversToDriverStore -DriverRoot $NewDrivers -Architecture $Architecture -Model $Model -DriverStoreRoot $DriverStoreRoot
     Import-DriversToSCCM -DriverSource $NewSource -Model $Model -Architecture $Architecture -SiteCode $SiteCode -DriverPackageRoot $DriverPackageRoot
-    Cleanup-TempFiles -DriverTemp $NewDrivers
+    Remove-TempFiles -DriverTemp $NewDrivers
 }
 
+function Expand-Cab {
+    [CmdLetBinding()]
+    Param(
+        [Parameter(Mandatory=$True)]$Path,
+        $DestinationPath
+    )
+
+    If ($PSVersionTable.PSEdition -eq 'Desktop') {
+        expand.exe $Path -F:*.* $DestinationPath | Out-Null
+    } elseif ($IsMacOS) {
+        If (Get-Command cabextract -ErrorAction SilentlyContinue) {
+            Write-Verbose "Running: cabextract -d $DestinationPath $Path"
+            cabextract -d $DestinationPath $Path | Out-Null
+        } else {
+            Write-Error "Please install cabextract via brew"
+        }
+    } else {
+        Write-Error "Support for OS not added yet"
+    }
+}
 function Get-DellDriverCatalogue {
     <#
     .SYNOPSIS
@@ -318,6 +345,7 @@ function Get-DellDriverCatalogue {
     .EXAMPLE
         PS> $XML = Get-DellDriverCatalogue
     .NOTES
+        Set a global DellXML to avoid multiple calls to dell when debugging
         Author: Jesse Harris
     .LINK
         https://github.com/zigford/USC-SCCMDrivers
@@ -325,19 +353,24 @@ function Get-DellDriverCatalogue {
     [CmdLetBinding()]
     Param()
 
-    $CatalogURI = 'http://downloads.dell.com/catalog/DriverPackCatalog.cab'
-    $CatalogTempPath = New-Item -Path $env:temp -Name (Get-Random) -ItemType Directory
-    $CatalogFilePath = "$CatalogTempPath\$($CatalogURI.Split('/')[-1])"
-    Invoke-WebRequest -UseBasicParsing -Uri $CatalogURI -OutFile $CatalogFilePath
-    $CatalogExtractPath = New-Item -Path $env:temp -Name DellCatalog -ItemType Directory -Force
-    expand.exe $CatalogFilePath -F:*.* $CatalogExtractPath | Out-Null
-    Get-ChildItem -Path $CatalogExtractPath -Filter *.cab | ForEach-Object {
-            $XML = [xml](Get-Content ($_ | Rename-Item -NewName "$($_.BaseName).xml" -PassThru))
-
+    If ($Global:DellXML) {
+        return $Global:DellXML
     }
-    $XML
+    $CatalogURI = 'http://downloads.dell.com/catalog/DriverPackCatalog.cab'
+    $CatalogTempPath = New-Item -Path $Env:TEMP -Name (Get-Random) -ItemType Directory
+    $CatalogFilePath = Join-Path -Path $CatalogTempPath -ChildPath $($CatalogURI.Split('/')[-1])
+    Invoke-WebRequest -UseBasicParsing -Uri $CatalogURI -OutFile $CatalogFilePath
+    $CatalogExtractPath = New-Item -Path $Env:TEMP -Name DellCatalog -ItemType Directory -Force
+    Expand-Cab -Path $CatalogFilePath -DestinationPath $CatalogExtractPath
+    $Cabs = Get-ChildItem -Path $CatalogExtractPath -Filter *.cab
+    If ($Cabs) { $Cabs | ForEach-Object {
+            $XML = [xml](Get-Content ($_ | Rename-Item -NewName "$($_.BaseName).xml" -PassThru))
+    } } else {
+        $XML = [xml](Get-Content (Join-Path -Path $CatalogExtractPath -ChildPath "DriverPackCatalog.xml"))
+    }
     Remove-Item -Path $CatalogTempPath -Recurse -Force
     Remove-Item -Path $CatalogExtractPath -Recurse -Force
+    return $XML
 }
 
 function Get-ShortOSName {
@@ -481,6 +514,30 @@ function Save-DellDriverPack {
     }
 }
 
+function Test-DellModelExists {
+    <#
+    .SYNOPSIS
+        Check is any verions of a driver model pack has been installed in Config Manager.
+        Usefull when a model hasn't technically been updated, but config manager hasn't seen it before.
+    .DESCRIPTION
+        Check in the SCCM Driver Store to see if an extracted pack exists.
+    .PARAMETER DriverStorePath
+        Path to the Config Manager driver store. 
+    .EXAMPLE
+        PS> Test-DellModelExists 
+    #>
+    [CmdLetBinding()]
+    Param(
+        [Parameter(Mandatory=$True)]$DriverStorePath,
+        [Parameter(Mandatory=$True)]$Model,
+        $OS = "Windows10"
+    )
+
+    $ModelDir = Join-Path -Path $DriverStorePath -ChildPath (Get-ShortOSName -OSVersion $OS)
+    Write-Verbose "Testing if $Model exists in $ModelDir"
+    Test-Path -Path (Join-Path -Path $ModelDir -ChildPath $Model)
+}
+
 function Test-DellPackHash {
     <#
     .SYNOPSIS
@@ -541,7 +598,9 @@ function Get-DellUpdatedDriverPacks {
     .DESCRIPTION
         Use other dell commands to get a list of driver packs. If a driver pack is detected as changed, download it and update the cache.
     .PARAMETER CacheFile
-         Specify the file where previous driverpack information was stored
+        Specify the file where previous driverpack information was stored
+    .PARAMETER XML
+        Specify a variable with XML content. Usefull when debugging to not download the latest each time the command is run. If not specified, the latest is downloaded from the Dell website.
     .EXAMPLE
         Example
     .NOTES
@@ -552,43 +611,42 @@ function Get-DellUpdatedDriverPacks {
     [CmdLetBinding()]
     Param(
         [Parameter(ValueFromPipeline=$True,ValueFromPipelineByPropertyName=$True)]$Model,
-        [Parameter(Mandatory=$True)]$CacheFile
+        [Parameter(Mandatory=$True)]$CacheFile,
+        $XML=(Get-DellDriverCatalogue)
     )
 
     Begin {
         If (-Not (Test-Path -Path $CacheFile)) {
             # Write a new cache file
-            $UpdatedModels = Get-DellDriverCabPackInfo -XML (Get-DellDriverCatalogue)
-            $UpdatedModels | Export-CSV -NoTypeInformation -Path $CacheFile
-            $NewData = $UpdatedModels
+            Write-Warning "No Cache file was found"
+            $AllData = Get-DellDriverCabPackInfo -XML $XML
+            $AllData | Export-CSV -NoTypeInformation -Path $CacheFile
         } else {
             Write-Verbose "Importing cachedata from $CacheFile"
             $CacheData = Import-CSV $CacheFile
-            $NewData = $CacheData.Model | Get-DellDriverCabPackInfo -XML (Get-DellDriverCatalogue)
+            $HTData = Get-DellDriverCabPackInfo -XML $XML -ReturnHT
         }
     }
 
     Process {
-        If ($Model){
-            If ($Model.Model) {
-                $Model = $Model.Model
-            }
-            Write-Debug "Only scanning for changes on $Model"
-            $NewModelData = $NewData | Where-Object {$PSItem.Model -eq $Model}
+        If ($Model.Model) {
+            $Model = $Model.Model
+        }
+        If (-Not $CacheData) {
+            return $AllData | Where-Object {$_.Model -eq $Model}
         } else {
-            $NewModelData = $NewData
-        }
-        If ($CacheData -and $NewModelData) {
-            $NewModelData | Where-Object {
-                $NewModel = $_.Model
-                $CacheModel = $CacheData | Where-Object {$psItem.Model -eq $NewModel}
-                Write-Debug "Comparing new data for model $NewModel with cache $($CacheModel.Model)"
-                Compare-Object -Ref $psItem -Diff $CacheModel -Property Version
+            $ReturnNewData = $False
+            If (($CacheData | ? Model -eq $Model).MD5 -ne $HTData[$Model]) {
+                Write-Verbose "Hash changed"
+                $ReturnNewData = $True
+            } elseif ((Test-DellModelExists -DriverStorePath $DriverStore -Model $Model) -eq $False) {
+                Write-Verbose "$Model has not been downloaded before"
+                $ReturnNewData = $True
             }
-        } elseif ($NewModelData) {
-            $NewModelData
+            If ($ReturnNewData){
+                return Get-DellDriverCabPackInfo -XML $XML -Model $Model
+            }
         }
-
     }
     End{
 
@@ -605,7 +663,8 @@ function Get-DellDriverCabPackInfo {
             "Windows8",
             "Windows8.1"
         )]$OSVersion='Windows10',
-        $XML=(Get-DellDriverCatalogue)
+        $XML=(Get-DellDriverCatalogue),
+        [switch]$ReturnHT
     )
     <#
         .SYNOPSIS
@@ -660,6 +719,9 @@ function Get-DellDriverCabPackInfo {
                 Write-Error "XML param is not an XML type or a path to an XML file"
             }
         }
+        If ($ReturnHT) {
+            $HT = @{}
+        }
     }
     Process {
         $DriverPackages = $XML.DriverPackManifest.DriverPackage
@@ -676,14 +738,23 @@ function Get-DellDriverCabPackInfo {
 	        $Package = $psItem
             $SupportedModels = $psItem.SupportedSystems.Brand.Model.name | Select-Object -Unique
             $SupportedModels | ForEach-Object {
-                [PSCustomObject]@{
-                    'Model' = $_
-                    'Version' = $Package.dellVersion
-                    'URL' = "https://downloads.dell.com/$($Package.path)"
-                    'ReleaseDate' = (Get-Date $Package.dateTime -Format "yyyy-MM-dd")
-                    'MD5' = $Package.hashMD5
+                If ($ReturnHT) {
+                    $HT.Add($_,$Package.hashMD5)
+                } else {
+                    [PSCustomObject]@{
+                        'Model' = $_
+                        'Version' = $Package.dellVersion
+                        'URL' = "https://downloads.dell.com/$($Package.path)"
+                        'ReleaseDate' = (Get-Date $Package.dateTime -Format "yyyy-MM-dd")
+                        'MD5' = $Package.hashMD5
+                    }
                 }
             }
+        }
+    }
+    End {
+        If ($ReturnHT) {
+            return $HT
         }
     }
 }
@@ -694,9 +765,12 @@ function Get-SupportedModels {
     if ($ModelFile) {
         Get-Content -Path $ModelFile
     } else {
-        (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/zigford/USC-SCCMDrivers/master/models.txt' -UseBasicParsing).Content
+        (Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/zigford/USC-SCCMDrivers/master/models.txt' -UseBasicParsing).Content -split "`n" | ForEach-Object {
+            If ($_ -ne '') {
+                $_.Trim()
+            }
+        }
     }
-
 }
 
 function Save-NewDriverPacks {
