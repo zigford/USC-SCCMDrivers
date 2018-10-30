@@ -25,7 +25,6 @@ OptiPlex 7760 AIO
 Precision 5520
 Precision 5530
 OptiPlex 7050
-OptiPlex 7060
 Latitude 3160
 Latitude 3380
 Latitude 5580
