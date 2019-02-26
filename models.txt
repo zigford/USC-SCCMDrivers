@@ -47,4 +47,3 @@ Latitude E7440
 Latitude E7450
 Latitude E7470
 OptiPlex 7040
-Latitude E6510
