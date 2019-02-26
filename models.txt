@@ -18,7 +18,6 @@ Precision Tower 7810
 XPS 13 9360
 XPS 13 9365
 XPS 13 9370
-OptiPlex 780
 OptiPlex 7450 AIO
 OptiPlex 7460 AIO
 OptiPlex 7760 AIO
@@ -32,6 +31,7 @@ Latitude 5580
 Latitude 5590
 Latitude 5591
 Latitude 7280
+Latitude 7390 2-in-1
 Latitude 7480
 Latitude 7490
 Latitude E5470
