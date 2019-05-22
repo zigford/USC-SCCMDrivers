@@ -1,9 +1,4 @@
 Precision T3610
-OptiPlex 9010
-OptiPlex 9010 AIO
-OptiPlex 9020
-OptiPlex 9020 AIO
-OptiPlex 9020M
 OptiPlex 9030 AIO
 Precision 5510
 Precision 7510
@@ -47,3 +42,7 @@ Latitude E7440
 Latitude E7450
 Latitude E7470
 OptiPlex 7040
+Latitude 5500
+Latitude 7400 2-in-1
+XPS 13 9380
+Latitude 7400
