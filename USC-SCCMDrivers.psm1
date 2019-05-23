@@ -484,6 +484,8 @@ function Save-DellDriverPack {
             $FileHashMatch = Test-DellPackHash -FilePath $OutFile -Model $ModelInfo.Model -XML $XML -OSVersion $OSVersion
         }
         If (-Not $WhatIf) {
+            $ProgressPreferenceSaved = $ProgressPreference
+            $ProgressPreference = 'SilentlyContinue'
             While ($Tries -lt $DownloadAttempts -and $FileHashMatch -ne $True ){
                 $Tries++
                 Try {
@@ -501,6 +503,7 @@ function Save-DellDriverPack {
                 'Downloaded' = (Test-Path -Path $OutFile)
                 'VerifySucceeded' = $FileHashMatch
             }    
+            $ProgressPreference = $ProgressPreferenceSaved 
         } else {
             Write-OutPut "WhatIf: Performing the operation ""Save File"" on target $($ModelInfo.URL) as destination file $OutFile"
         }
