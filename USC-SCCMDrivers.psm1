@@ -1,5 +1,6 @@
 #$DriverStore = '/Volumes/appdev/General/DriverStore'
 $DriverStore = '/Users/harrisj/tmp/DriverStore'
+$DriverStore = '\\usc.internal\usc\appdev\General\DriverStore'
 
 If (-Not (Get-Command Expand-Archive -ErrorAction SilentlyContinue)) {
     #Not WMF5, implement our own expand archive
@@ -782,5 +783,9 @@ function Save-NewDriverPacks {
     $OutPath=".\",[switch]$Whatif)
     Get-SupportedModels -ModelFile:$ModelFile | Get-DellUpdatedDriverPacks -CacheFile $CacheFile | Save-DellDriverPack -OutPath $OutPath -WhatIf:$Whatif
     # Update Cache
+    If (Test-Path $CacheFile) {
+        Rename-Item $CacheFile -NewName `
+            "$((Get-Item $CacheFile).BaseName)-$(Get-Date -Format "dd-MM-yyyy").csv"
+    }
     Get-DellDriverCabPackInfo -XML (Get-DellDriverCatalogue) | Export-CSV -Path $CacheFile -NoTypeInformation
 }
