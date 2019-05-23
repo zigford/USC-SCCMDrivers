@@ -778,6 +778,31 @@ function Get-SupportedModels {
 }
 
 function Save-NewDriverPacks {
+    <#
+    .SYNOPSIS
+        Download driver packages which have changed since last check
+    .DESCRIPTION
+        Read a list of models we want to support. For each one see if it's hash
+        has changed and if so, download it.
+    .PARAMETER ModelFile
+        Specify a plain text file with a list of models to check for new
+        updates. If not supplied, the one hosted on the Github project page
+        is downloaded and checked
+    .PARAMETER CacheFile
+        Specify a .CSV file which is the Dell Driver catalog. The file is
+        compared against the latest one downloaded from Dell. Dell supplies
+        file hashes for the driver packages and when the hash has changed in
+        the new file, the driver package is downloaded. If not supplied, a
+        file called DriverPackageCache is used in the current directory.
+    .PARAMETER OutPath
+        Directory to save driver packages. Defaults to current directory
+    .EXAMPLE
+        Save-NewDriverPacks
+    .NOTES
+        notes
+    .LINK
+        https://github.com/zigford/USC-SCCMDrivers
+    #>
     [CmdLetBinding()]
     Param($ModelFile,$CacheFile=".\DriverPackageCache.csv",
     $OutPath=".\",[switch]$Whatif)
