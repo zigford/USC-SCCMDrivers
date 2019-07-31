@@ -35,6 +35,22 @@ function Send-EmailMessage {
     Send-MailMessage @messageParameters
 }
 
+function Get-ModelFromFileName {
+    Param([Parameter(Mandatory=$True)]$FileName)
+    $SplitName = $DriverPackage.BaseName.Split('-')
+    $Model = ""
+    for ( $i=1; $i -lt $SplitName.Count - 1; $i++ ) { 
+        $Model = $SplitName[$i] + "-"
+    }
+    return $Model.TrimEnd('-')
+}
+
+function Get-ArchFromFileName {
+    Param([Parameter(Mandatory=$True)]$FileName)
+    $SplitName = $DriverPackage.BaseName.Split('-')
+    return $SplitName[0]
+}
+
 $General = '\\usc.internal\usc\appdev\General'
 $LogPath = "$General\Logs"
 $ModulePath = "$General\SCCMTools\Scripts\Modules\Dev"
@@ -54,9 +70,8 @@ $ErrorActionPreference = 'Stop'
 
 ForEach ($DriverPackage in $DriverPackages) {
     Write-Verbose "Working on $DriverPackage"
-    $StrSplit = $DriverPackage.BaseName.Split('-')
-    $Architecture = $StrSplit[0]
-    $Model = $StrSplit[1]
+    $Architecture = Get-ArchFromFileName $DriverPackage
+    $Model = Get-ModelFromFileName $DriverPackage
     $UpdateParams = @{
         Model = $Model
         DriverCab = $DriverPackage.FullName
