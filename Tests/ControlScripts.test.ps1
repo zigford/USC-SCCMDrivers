@@ -53,3 +53,11 @@ Describe "Get-ModelFromFileName" {
         }
     }
 }
+
+Describe "Get-ArchFromFileName" {
+    It "returns the arch (OsVerBitness) from a file object" {
+        Get-ArchFromFileName -FileName `
+            ([System.IO.FileInfo]"Win10x64-Latitude 7280-A11.cab") |
+            Should Be "Win10x64"
+    }
+}
