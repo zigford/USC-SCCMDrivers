@@ -39,10 +39,10 @@ function Send-EmailMessage {
 
 function Get-ModelFromFileName {
     Param([Parameter(Mandatory=$True)]$FileName)
-    $SplitName = $DriverPackage.BaseName.Split('-')
+    $SplitName = $FileName.BaseName.Split('-')
     $Model = ""
-    for ( $i=1; $i -lt $SplitName.Count - 1; $i++ ) { 
-        $Model = $SplitName[$i] + "-"
+    for ( $i=1; $i -lt $SplitName.Count - 1; $i++ ) {
+        $Model += $SplitName[$i] + "-"
     }
     return $Model.TrimEnd('-')
 }
