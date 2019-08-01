@@ -49,7 +49,7 @@ function Get-ModelFromFileName {
 
 function Get-ArchFromFileName {
     Param([Parameter(Mandatory=$True)]$FileName)
-    $SplitName = $DriverPackage.BaseName.Split('-')
+    $SplitName = $FileName.BaseName.Split('-')
     return $SplitName[0]
 }
 
