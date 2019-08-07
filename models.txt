@@ -1,49 +1,43 @@
-Precision T3610
-OptiPlex 9030 AIO
-Precision 5510
-Precision 7510
-Precision M4800
-Precision T1700
-Precision T5610
-Precision Tower 3420
-Precision Tower 3620
-Precision Tower 5810
-Precision Tower 7810
-XPS 13 9360
-XPS 13 9365
-XPS 13 9370
-OptiPlex 7450 AIO
-OptiPlex 7460 AIO
-OptiPlex 7760 AIO
-Precision 5520
-Precision 5530
-OptiPlex 7050
-OptiPlex 7060
 Latitude 3160
-Latitude 3380
+Latitude 5300 2-in-1
+Latitude 5400
+Latitude 5401
+Latitude 5501
 Latitude 5580
 Latitude 5590
 Latitude 5591
 Latitude 7280
 Latitude 7390 2-in-1
+Latitude 7400
+Latitude 7400 2-in-1
 Latitude 7480
 Latitude 7490
-Latitude E5470
-Latitude E5550
 Latitude E5570
-Latitude E6230
-OptiPlex 7440 AIO
-Latitude E6430
-Latitude E6540
-Latitude E7240
 Latitude E7250
 Latitude E7270
-Latitude E7440
 Latitude E7450
 Latitude E7470
 OptiPlex 7040
-Latitude 5500
-Latitude 7400 2-in-1
+OptiPlex 7050
+OptiPlex 7060
+OptiPlex 7070
+OptiPlex 7440 AIO
+OptiPlex 7450 AIO
+OptiPlex 7460 AIO
+OptiPlex 7470 AIO
+OptiPlex 7760 AIO
+OptiPlex 7770 AIO
+OptiPlex 9030 AIO
+Precision 5510
+Precision 5520
+Precision 5530
+Precision 7510
+Precision T1700
+Precision T3430
+Precision T5610
+Precision Tower 3620
+Precision Tower 3630
+XPS 13 9360
+XPS 13 9365
+XPS 13 9370
 XPS 13 9380
-Latitude 7400
-Latitude 5300 2-in-1
