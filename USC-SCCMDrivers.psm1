@@ -723,9 +723,6 @@ function Get-DellDriverCabPackInfo {
                 Write-Error "XML param is not an XML type or a path to an XML file"
             }
         }
-        If ($ReturnHT) {
-            $HT = @{}
-        }
     }
     Process {
         $DriverPackages = $XML.DriverPackManifest.DriverPackage
@@ -738,29 +735,55 @@ function Get-DellDriverCabPackInfo {
                 $psItem.SupportedSystems.Brand.Model.name -eq $Model
             }
         }
-        $ValidPackages | ForEach-Object {
+        $All = $ValidPackages | ForEach-Object {
 	        $Package = $psItem
-            $SupportedModels = $psItem.SupportedSystems.Brand.Model.name | Select-Object -Unique
+            $SupportedModels = $psItem.SupportedSystems.Brand.Model.name |
+            Select-Object -Unique
             $SupportedModels | ForEach-Object {
-                If ($ReturnHT) {
-                    $HT.Add($_,$Package.hashMD5)
-                } else {
-                    [PSCustomObject]@{
-                        'Model' = $_
-                        'Version' = $Package.dellVersion
-                        'URL' = "https://downloads.dell.com/$($Package.path)"
-                        'ReleaseDate' = (Get-Date $Package.dateTime -Format "yyyy-MM-dd")
-                        'MD5' = $Package.hashMD5
-                    }
+                [PSCustomObject]@{
+                    'Model' = $_
+                    'Version' = $Package.dellVersion
+                    'URL' = "https://downloads.dell.com/$($Package.path)"
+                    'ReleaseDate' = (Get-Date $Package.dateTime -Format "yyyy-MM-dd")
+                    'MD5' = $Package.hashMD5
                 }
             }
         }
     }
-    End {
-        If ($ReturnHT) {
-            return $HT
+    end {
+        return (Remove-Dupes -Packages $All -ReturnHT:$PSBoundParameters.ReturnHT)
+    }
+}
+
+function Remove-Dupes {
+    Param(
+          $Packages,
+          [Switch]$ReturnHT
+         )
+
+    $Groups = $Packages | Group-Object -Property Model
+    $FilteredGroups = ForEach ($Group in $Groups) {
+        If ($Group.Count -eq 1) {
+            $Group.Group
+        } else {
+            $Group.Group | Sort-Object -Property Version |
+            Select-Object -Last 1
         }
     }
+
+    If ($ReturnHT) {
+        $HT = @{}
+        $FilteredGroups.PSObject.Properties |
+        Where-Object { $_.Name -eq 'SyncRoot' } |
+        Select-Object -ExpandProperty Value |
+        ForEach-Object {
+                $HT[$_.Model] = $_.MD5
+        }
+        return $HT
+    } else {
+        return $FilteredGroups
+    }
+
 }
 
 function Get-SupportedModels {
