@@ -1,5 +1,5 @@
 #$DriverStore = '/Volumes/appdev/General/DriverStore'
-$DriverStore = '/Users/harrisj/tmp/DriverStore'
+#$DriverStore = '/Users/harrisj/tmp/DriverStore'
 $DriverStore = '\\usc.internal\usc\appdev\General\DriverStore'
 
 If (-Not (Get-Command Expand-Archive -ErrorAction SilentlyContinue)) {
@@ -39,7 +39,7 @@ $ErrorActionPreference='Stop'
 
     #Does the CAB exist?
     If (-Not (Test-Path -Path $DriverCAB)) {
-        Write-Error "Could not access CAB/ZIP file"
+        Write-Error "Could not access CAB/ZIP file: $DriverCab"
     }
 
     $TempFolderPath = "$($env:Temp)\ExtractDriverPackage"
@@ -61,7 +61,7 @@ $ErrorActionPreference='Stop'
       .cab { 
         Try {
             Write-Verbose "CAB file $DriverCAB detected. Using expand.exe"
-            expand.exe $DriverCAB -F:*.* $TempFolder.FullName | Out-Null
+            expand.exe $DriverCAB -F:* $TempFolder.FullName | Out-Null
         } Catch {
             $TempFolder | Remove-Item -Force
             Write-Error "Unable to fully expand archive $DriverCAB"
