@@ -245,7 +245,7 @@ Param($DriverSource,$Model,$Architecture,$SiteCode,$DriverPackageRoot)
     Write-Verbose "Importing Drivers from $DriverSource"
     $DriverFolders | ForEach-Object {
         $i=1
-        $InfFiles = Get-ChildItem -Path $_.FullName -Recurse *.inf
+        $InfFiles = Get-ChildItem -Path $_.FullName -Recurse *.inf -File
         $InfFiles | ForEach-Object {
         Write-Progress -Activity "Importing Drivers" -Status "Importing $($_.Name) - $i of $($InfFiles.Count)" -PercentComplete ((100 / $InfFiles.Count)*$i)
         $i++
