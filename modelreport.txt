@@ -15,6 +15,7 @@ Dell Inc.,Precision T5610
 Dell Inc.,Precision Tower 3420
 Dell Inc.,Precision Tower 3620
 Dell Inc.,Precision Tower 5810
+Dell Inc.,Precision Tower 5820
 Dell Inc.,Precision Tower 7810
 Dell Inc.,XPS 13 9360
 Dell Inc.,XPS 13 9365
