@@ -35,6 +35,7 @@ Precision 7510
 Precision T1700
 Precision T3430
 Precision T5610
+Precision T5820
 Precision Tower 3620
 Precision Tower 3630
 XPS 13 9360
