@@ -48,6 +48,7 @@ Precision 5550
 Precision 5560
 Precision T5610
 Precision Tower 3620
+Precision Tower 3650
 XPS 13 9360
 XPS 13 9370
 Latitude 5491
