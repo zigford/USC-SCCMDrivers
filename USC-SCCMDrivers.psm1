@@ -7,7 +7,7 @@ If (-Not (Get-Command Expand-Archive -ErrorAction SilentlyContinue)) {
     function Expand-Archive {
     [CmdletBinding()]
     Param($Path,$DestinationPath)
-        Add-Type -assembly �system.io.compression.filesystem�
+        Add-Type -assembly system.io.compression.filesystem
         [io.compression.zipfile]::ExtractToDirectory($Path, $DestinationPath)
     }
 }
@@ -60,8 +60,15 @@ $ErrorActionPreference='Stop'
       }
       .cab { 
         Try {
-            Write-Verbose "CAB file $DriverCAB detected. Using expand.exe"
-            expand.exe $DriverCAB -F:* $TempFolder.FullName | Out-Null
+            # 13/06/22 quick and dirty fix. Expand-archive doesn't work for newer Dell .cabs in PE format
+            If (Test-Path 'C:\Program Files\7-Zip\7z.exe') {
+                Write-Verbose "CAB file $DriverCAB detected. Expanding using 7z.exe"
+                & 'C:\Program Files\7-Zip\7z.exe' x $DriverCAB -y -o"$($TempFolder.FullName)" | Out-Null
+            } Else {
+                Write-Warning "7zip not installed. Using expand.exe may fail on newer Dell .cabs in PE format"
+                Write-Verbose "CAB file $DriverCAB detected. Using expand.exe"
+                Expand.exe $DriverCAB -F:* $TempFolder.FullName | Out-Null
+            }
         } Catch {
             $TempFolder | Remove-Item -Force
             Write-Error "Unable to fully expand archive $DriverCAB"
@@ -504,7 +511,7 @@ function Save-DellDriverPack {
                 'Downloaded' = (Test-Path -Path $OutFile)
                 'VerifySucceeded' = $FileHashMatch
             }    
-            $ProgressPreference = $ProgressPreferenceSaved 
+            $ProgressPreference = $ProgressPreferenceSaved
         } else {
             Write-OutPut "WhatIf: Performing the operation ""Save File"" on target $($ModelInfo.URL) as destination file $OutFile"
         }
