@@ -309,15 +309,19 @@ Param($DriverTemp)
 }
 
 function Update-CfgDriverPackage {
-[CmdletBinding()]
-Param($Model,$DriverCAB,$Architecture='Win10x64',$DriverStoreRoot='\\usc.internal\usc\appdev\General\DriverStore',$SiteCode='SC1',$DriverPackageRoot='\\usc.internal\usc\appdev\SCCMPackages\DriverPackages')
+    [CmdletBinding()]
+    Param(
+        $Model,
+        $DriverCAB,
+        $Architecture='Win10x64',
+        $DriverStoreRoot='\\usc.internal\usc\appdev\General\DriverStore',
+        $SiteCode='SC1',
+        $DriverPackageRoot='\\usc.internal\usc\appdev\SCCMPackages\DriverPackages'
+    )
     $ErrorActionPreference = 'Stop'
-    #Import-Module "$(Split-Path -Path $PSCommandPath -Parent)\DriverUpdateCommands.ps1"
-    
+
     $NewDrivers = Expand-CfgDriverPackage -DriverCAB $DriverCAB
     $ArchiveFolder = Move-CfgDriverPackToArchive -Model $Model -DriverStoreRoot $DriverStoreRoot -Architecture $Architecture
-    #$NewDrivers = Get-Item 'C:\Users\jpharris\AppData\Local\Temp\1516192286'
-    #$ArchiveFolder = Get-Item '\\usc.internal\usc\appdev\General\DriverStore\Win10x64\Surface Book\_Archive\15022016'
     Remove-CfgAllDriversFromPackage -Architecture $Architecture -Model $Model -ArchiveFolder $ArchiveFolder -SiteCode $SiteCode -DriverStoreRoot $DriverStoreRoot
     $NewSource = Add-CfgNewDriversToDriverStore -DriverRoot $NewDrivers -Architecture $Architecture -Model $Model -DriverStoreRoot $DriverStoreRoot
     Import-CfgDriversToSCCM -DriverSource $NewSource -Model $Model -Architecture $Architecture -SiteCode $SiteCode -DriverPackageRoot $DriverPackageRoot
