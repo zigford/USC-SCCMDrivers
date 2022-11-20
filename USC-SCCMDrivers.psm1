@@ -129,11 +129,11 @@ Param($Model,$Architecture='Win10x64',$ArchiveFolder,$SiteCode='SC1',$DriverStor
 
         $OldDriverListID = @()
         #$DriverPackage.Name 
-        Get-CMDriver -DriverPackageName $DriverPackage.Name -Verbose:$False| ForEach-Object {
+        Get-CMDriver -DriverPackageName $DriverPackage.Name -Verbose:$False | ForEach-Object {
             $DriverID = $_.CI_ID
             $DriverName = $_.LocalizedDisplayName
             $OldDriverListID += $DriverID
-            Write-Verbose "Removing driver $($_.LocalizedDisplayName) from package"
+            Write-Verbose "Removing driver $($_.LocalizedDisplayName) from package ""$($DriverPackage.Name)"""
             Try {
                 Remove-CMDriverFromDriverPackage -DriverId $DriverID -DriverPackage $DriverPackage -Force -Verbose:$False
                 #Set-CMDriver -InputObject $_ -RemoveAdministrativeCategory $Category -Verbose:$False
@@ -215,7 +215,7 @@ function Add-CfgNewDriversToDriverStore {
 [CmdletBinding()]
 Param($DriverRoot,$Architecture,$Model,$DriverStoreRoot='\\usc.internal\usc\appdev\General\DriverStore')
     Write-Verbose "DriverRoot is $DriverRoot"
-    If ($DriverRoot -eq $Null -or (Test-Path -Path $DriverRoot) -eq $False) {
+    If ($Null -eq $DriverRoot -or (Test-Path -Path $DriverRoot) -eq $False) {
         Write-Error "Could not locate driver root $DriverRoot or DriverRoot variable null"
     }
 
@@ -244,7 +244,7 @@ Param($DriverSource,$Model,$Architecture,$SiteCode,$DriverPackageRoot)
     $DriverPackageName = $CategoryName
     $DriverPackage = Get-CMDriverPackage -Name $DriverPackageName -Verbose:$False
     If (-Not ($DriverPackage)) {
-        Write-Verbose "Driver package $DriverPackageName does not exist. Creating..."
+        Write-Verbose "Driver package ""$DriverPackageName"" does not exist. Creating..."
         $DriverPackage = New-CMDriverPackage -Name $DriverPackageName -Path "$DriverPackageRoot\$DriverPackageName" -Verbose:$False
     }
     Pop-Location
@@ -262,8 +262,8 @@ Param($DriverSource,$Model,$Architecture,$SiteCode,$DriverPackageRoot)
                 Write-Verbose "Importing $($_.FullName)"
                 $Driver = Import-CMDriver -UncFileLocation $_.FullName -ImportDuplicateDriverOption AppendCategory -EnableAndAllowInstall $True -AdministrativeCategory $Category -Verbose:$False
                 If ($Driver.ContentSourcePath -match '_Archive') {
-                    Write-Verbose "Duplicate driver detected. Updating driver to new source path"
                     $SourcePath = Split-Path -Path $_ -Parent
+                    Write-Verbose "Duplicate driver detected. Updating driver to new source path ""$SourcePath"""
                     Set-CMDriver -InputObject $Driver -DriverSource $SourcePath -Description 'Updated source location from Archive'
                 }
             } Catch {
@@ -285,7 +285,7 @@ Param($DriverSource,$Model,$Architecture,$SiteCode,$DriverPackageRoot)
             'Driver' = $_.LocalizedDisplayName
         }
         Write-Progress -Activity "Adding Drivers to package $DriverPackageName" -Status "Adding $($_.LocalizedDisplayName) - $i of $($DriversToAdd.Count)" -PercentComplete ((100 / $DriversToAdd.Count)*$i)
-        Write-Verbose "Adding $($_.LocalizedDisplayName) to $DriverPackageName"
+        Write-Verbose "Adding $($_.LocalizedDisplayName) to package ""$DriverPackageName"""
         Try {
             Add-CMDriverToDriverPackage -Driver $_ -DriverPackageName $DriverPackageName -Verbose:$False
             $ObjResult | Add-Member -MemberType NoteProperty -Name 'Imported' -Value $True -PassThru
