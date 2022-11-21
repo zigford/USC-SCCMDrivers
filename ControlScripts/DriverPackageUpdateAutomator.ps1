@@ -60,15 +60,16 @@ If (!$isDotSourced) {
     $ModulePath = "$General\SCCMTools\Scripts\Modules\Dev"
     Import-Module "$ModulePath\USC-SCCMDrivers"
     $CompletedRoot = "\\usc.internal\usc\appdev\General\Packaging\CompletedPackages"
-    $LogFile="$LogPath\PackageDriverAutomator.log"
 
+    #$LogFile="$LogPath\PackageDriverAutomator.log"
     #If ((Test-Path $LogFile) -and (Get-Item $LogFile).Length -gt 2097152) {
     #    Start-Transcript -Path $LogPath\PackageDriverAutomator.log
     #} else {
     #    Start-Transcript -Path $LogPath\PackageDriverAutomator.log -Append
     #}
     $date = get-date -format yyyyMMdd-HHmm
-    Start-Transcript -Path $LogPath\PackageDriverAutomator-$date.log
+    $LogFile = $LogPath\PackageDriverAutomator-$date.log
+    Start-Transcript -Path $LogFile
 
 
     $DriverPackageDir = "$General\Packaging\DriverPackages"
@@ -87,7 +88,7 @@ If (!$isDotSourced) {
         }
         Update-CfgDriverPackage @UpdateParams -Verbose
         $email = @{
-            Message = "$DriverPackage has been updated! Check the logs at $($General)\Logs\PackageDriverAutomator.log"
+            Message = "$DriverPackage has been updated! Check the logs at $($LogFile)"
             #EmailAddress = 'jpharris@usc.edu.au'
             EmailAddress = '330c4da0.usceduau.onmicrosoft.com@apac.teams.ms'
             Subject = $DriverPackage
