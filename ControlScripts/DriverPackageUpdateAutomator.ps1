@@ -68,7 +68,7 @@ If (!$isDotSourced) {
     #    Start-Transcript -Path $LogPath\PackageDriverAutomator.log -Append
     #}
     $date = get-date -format yyyyMMdd-HHmm
-    $LogFile = $LogPath\PackageDriverAutomator-$date.log
+    $LogFile = $LogPath\DriverPackageUpdateAutomator-$date.log
     Start-Transcript -Path $LogFile
 
 
