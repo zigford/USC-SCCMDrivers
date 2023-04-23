@@ -19,6 +19,7 @@ Latitude 7280
 Latitude 7310
 Latitude 7320
 Latitude 7330
+Latitude 7340
 Latitude 7390
 Latitude 7390 2-in-1
 Latitude 7480
