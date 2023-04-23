@@ -3,10 +3,12 @@ Latitude 5300 2-in-1
 Latitude 5310 2-in-1
 Latitude 5320
 Latitude 5330
+Latitude 5340
 Latitude 5400
 Latitude 5410
 Latitude 5420
 Latitude 5430
+Latitude 5440
 Latitude 5401
 Latitude 5411
 Latitude 5421
@@ -30,11 +32,13 @@ Latitude E7270
 Latitude E7450
 Latitude E7470
 OptiPlex 7000
+OptiPlex 7010
 OptiPlex 7040
 OptiPlex 7050
 OptiPlex 7060
 OptiPlex 7070
 OptiPlex 7400 AIO
+OptiPlex 7410 AIO
 OptiPlex 7440 AIO
 OptiPlex 7450 AIO
 OptiPlex 7460 AIO
@@ -47,6 +51,7 @@ OptiPlex 7780 AIO
 OptiPlex 9030 AIO
 Precision 3561
 Precision 3571
+Precision 3581
 Precision 5510
 Precision 5520
 Precision 5530
