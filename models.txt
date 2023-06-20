@@ -59,6 +59,7 @@ Precision 5540
 Precision 5550
 Precision 5560
 Precision 5570
+Precision 5680
 Precision T5610
 Precision Tower 3620
 Precision 3260
