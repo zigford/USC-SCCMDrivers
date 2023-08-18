@@ -3,14 +3,17 @@ Latitude 5310 2-in-1
 Latitude 5320
 Latitude 5330
 Latitude 5400
-Latitude 5410
-Latitude 5420
-Latitude 5430
 Latitude 5401
+Latitude 5410
 Latitude 5411
+Latitude 5420
 Latitude 5421
+Latitude 5430
+Latitude 5491
 Latitude 5501
 Latitude 5511
+Latitude 5521
+Latitude 5521
 Latitude 5580
 Latitude 5590
 Latitude 5591
@@ -19,6 +22,8 @@ Latitude 7320
 Latitude 7330
 Latitude 7340
 Latitude 7390 2-in-1
+Latitude 7400 2-in-1
+Latitude 7400 2-in-1
 Latitude 7480
 Latitude 7490
 Latitude E5570
@@ -30,6 +35,10 @@ OptiPlex 7040
 OptiPlex 7050
 OptiPlex 7060
 OptiPlex 7070
+OptiPlex 7080
+OptiPlex 7080
+OptiPlex 7090
+OptiPlex 7090
 OptiPlex 7400 AIO
 OptiPlex 7410 AIO
 OptiPlex 7440 AIO
@@ -41,9 +50,18 @@ OptiPlex 7490 AIO
 OptiPlex 7760 AIO
 OptiPlex 7770 AIO
 OptiPlex 7780 AIO
+OptiPlex 9020
+OptiPlex 9020M
 OptiPlex 9030 AIO
+Precision 3260
+Precision 3430 Tower
+Precision 3460
+Precision 3460
 Precision 3561
 Precision 3571
+Precision 3630 Tower
+Precision 3650 TOWER
+Precision 3660 Tower
 Precision 5510
 Precision 5520
 Precision 5530
@@ -52,35 +70,17 @@ Precision 5550
 Precision 5560
 Precision 5570
 Precision 5680
+Precision 5820 Tower
+Precision 7920 Tower
+Precision 7920 Tower
 Precision T5610
+Precision T7610
+Precision T7610
 Precision Tower 3620
-Precision 3260
-Precision 3650 TOWER
-Precision 3660 Tower
+Precision Tower 5810
+Precision Tower 7810
+Precision Tower 7810
+Precision Tower 7910
+Precision Tower 7910
 XPS 13 9360
 XPS 13 9370
-Latitude 5491
-OptiPlex 9020
-OptiPlex 9020M
-Precision 3630 Tower
-Precision 5820 Tower
-Precision 3430 Tower
-Precision Tower 5810
-Latitude 5521
-Latitude 7400 2-in-1
-OptiPlex 7080
-OptiPlex 7090
-Precision 3460
-Precision 7920 Tower
-Precision T7610
-Precision Tower 7810
-Precision Tower 7910
-Latitude 5521
-Latitude 7400 2-in-1
-OptiPlex 7080
-OptiPlex 7090
-Precision 3460
-Precision 7920 Tower
-Precision T7610
-Precision Tower 7810
-Precision Tower 7910
