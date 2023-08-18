@@ -75,3 +75,12 @@ Precision 7920 Tower
 Precision T7610
 Precision Tower 7810
 Precision Tower 7910
+Latitude 5521
+Latitude 7400 2-in-1
+OptiPlex 7080
+OptiPlex 7090
+Precision 3460
+Precision 7920 Tower
+Precision T7610
+Precision Tower 7810
+Precision Tower 7910
