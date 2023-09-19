@@ -39,7 +39,7 @@ OptiPlex 7080
 OptiPlex 7080
 OptiPlex 7090
 OptiPlex 7090
-OptiPlex 7400 AIO
+OptiPlex 7400 All-In-One
 OptiPlex AIO 7410
 OptiPlex 7440 AIO
 OptiPlex 7450 AIO
