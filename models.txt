@@ -53,7 +53,6 @@ OptiPlex 7780 AIO
 OptiPlex 9020
 OptiPlex 9020M
 OptiPlex 9030 AIO
-OptiPlex All-in-One Plus 7410
 Precision 3260
 Precision 3430 Tower
 Precision 3460
