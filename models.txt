@@ -55,7 +55,7 @@ OptiPlex 9020M
 OptiPlex 9030 AIO
 Precision 3260 Compact
 Precision 3430 Tower
-Precision 3460
+Precision 3460 SFF
 Precision 3460
 Precision 3561
 Precision 3571
