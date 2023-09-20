@@ -36,8 +36,6 @@ OptiPlex 7050
 OptiPlex 7060
 OptiPlex 7070
 OptiPlex 7080
-OptiPlex 7080
-OptiPlex 7090
 OptiPlex 7090
 OptiPlex 7400 All-In-One
 OptiPlex AIO 7410
@@ -56,13 +54,11 @@ OptiPlex 9030 AIO
 Precision 3260 Compact
 Precision 3430 Tower
 Precision 3460 SFF
-Precision 3460
 Precision 3561
 Precision 3571
-Precision 3630 Tower
+Precision 3630
 Precision 3650 TOWER
 Precision 3660 Tower
-Precision 5510
 Precision 5520
 Precision 5530
 Precision 5540
@@ -75,12 +71,9 @@ Precision 7920 Tower
 Precision 7920 Tower
 Precision T5610
 Precision T7610
-Precision T7610
 Precision Tower 3620
 Precision Tower 5810
 Precision Tower 7810
-Precision Tower 7810
-Precision Tower 7910
 Precision Tower 7910
 XPS 13 9360
 XPS 13 9370
