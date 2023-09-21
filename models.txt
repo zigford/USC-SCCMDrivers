@@ -1,5 +1,5 @@
 Latitude 5300 2-in-1
-Latitude 5310 2-in-1
+Latitude 5310 2 in 1
 Latitude 5320
 Latitude 5330
 Latitude 5400
@@ -22,7 +22,6 @@ Latitude 7320
 Latitude 7330
 Latitude 7340
 Latitude 7390
-Latitude 7400 2-in-1
 Latitude 7400 2-in-1
 Latitude 7480
 Latitude 7490
