@@ -30,7 +30,7 @@ Latitude E7270
 Latitude E7450
 Latitude E7470
 OptiPlex 7000
-Optiplex SFF 7010
+Optiplex 7010 SFF
 OptiPlex 7040
 OptiPlex 7050
 OptiPlex 7060
