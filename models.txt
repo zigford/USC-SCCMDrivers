@@ -9,6 +9,7 @@ Latitude 5411
 Latitude 5420
 Latitude 5421
 Latitude 5430
+Latitude 5440
 Latitude 5450
 Latitude 5491
 Latitude 5501
