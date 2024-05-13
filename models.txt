@@ -58,6 +58,7 @@ Precision 3430 Tower
 Precision 3460 SFF
 Precision 3561
 Precision 3571
+Precision 3591
 Precision 3630
 Precision 3650 TOWER
 Precision 3660 Tower
