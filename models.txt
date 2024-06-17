@@ -10,7 +10,7 @@ Latitude 5420
 Latitude 5421
 Latitude 5430
 Latitude 5440
-Latitude 5450
+#Latitude 5450 #removed temp - getting confused with E5450, downloading manually
 Latitude 5491
 Latitude 5501
 Latitude 5511
