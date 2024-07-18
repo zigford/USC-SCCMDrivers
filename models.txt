@@ -23,7 +23,7 @@ Latitude 7280
 Latitude 7320
 Latitude 7330
 Latitude 7340
-Latitude 7350
+#Latitude 7350 #removed temp - getting confused with old model with same number, downloading manually
 Latitude 7390
 Latitude 7400 2-in-1
 Latitude 7480
