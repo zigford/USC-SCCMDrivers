@@ -70,6 +70,7 @@ Precision 5550
 Precision 5560
 Precision 5570
 Precision 5680
+Precision 5690
 Precision 5820 Tower
 Precision 5860 Tower
 Precision 7920 Tower
