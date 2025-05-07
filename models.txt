@@ -83,5 +83,7 @@ Precision Tower 3620
 Precision Tower 5810
 Precision Tower 7810
 Precision Tower 7910
+Pro 14+ PB14250
+Pro 13+ PB13250
 XPS 13 9360
 XPS 13 9370
