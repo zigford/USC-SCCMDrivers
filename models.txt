@@ -85,5 +85,6 @@ Precision Tower 7810
 Precision Tower 7910
 Dell Pro 13 Plus PB13250
 Dell Pro 14 Plus PB14250
+Dell Pro 13 Premium PA13250
 XPS 13 9360
 XPS 13 9370
